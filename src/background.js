@@ -49,9 +49,9 @@ async function createWindow() {
 		movable: false,
 		backgroundColor: "#121212",
 	});
-	// splash.webContents.on("devtools-opened", () => {
-	// 	splash.webContents.closeDevTools();
-	// });
+	splash.webContents.on("devtools-opened", () => {
+		splash.webContents.closeDevTools();
+	});
 	if (process.env.WEBPACK_DEV_SERVER_URL) {
 		// Load the url of the dev server if in development mode
 		await splash.loadURL(`${process.env.WEBPACK_DEV_SERVER_URL}/loading.html`);
@@ -61,7 +61,13 @@ async function createWindow() {
 		splash.loadURL("app://./loading.html");
 	}
 
-	(main = win), (load = splash);
+	main = win;
+	load = splash;
+	if (typeof win == "undefined" || typeof load == "undefined") {
+		console.log("Algo deu errado, PUTA QUE PARIU EM");
+		app.quit();
+		return;
+	}
 }
 
 // Quit when all windows are closed.
