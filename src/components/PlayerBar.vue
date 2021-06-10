@@ -1,6 +1,6 @@
 <template>
 	<div class="PlayerBar">
-		<audio :src="musicUrl" controls></audio>
+		<audio ref="musicPlayer" :src="musicUrl"></audio>
 		<div class="track-container">
 			<div style="width: 99%; height: 100px; display: grid; place-items: center">
 				<!-- <img  style="height: 80px; width: 80px" /> -->
@@ -88,7 +88,7 @@
 				<i v-else-if="volume >= 30 && volume <= 49" class="bx bxs-volume-low"></i>
 				<i v-else-if="volume > 0 && volume <= 29" class="bx bxs-volume"></i>
 				<i v-else class="bx bxs-volume-mute"></i>
-				<input @change="changeVolume()" v-model="volume" type="range" />
+				<input v-model="volume" type="range" />
 			</div>
 		</div>
 	</div>
@@ -109,11 +109,15 @@ export default {
 		this.ytDownloader.start();
 		this.manageWordSize();
 		window.addEventListener("resize", this.manageWordSize);
+		setInterval(() => {
+			this.currentDuration = this.musicAudio.currentTime;
+		}, 1000);
 	},
 	data() {
 		return {
 			ytDownloader: new youtubeDownloader(),
 			musicUrl: "",
+			musicAudio: new Audio(),
 			volume: Number(localStorage.volume) || 100,
 			durationInSeconds: 0,
 			fixedDuration: "",
@@ -127,24 +131,34 @@ export default {
 			this.musicUrl = "";
 			const returnedUrl = await this.ytDownloader.download(this.link, this.name);
 			this.musicUrl = `file:///${returnedUrl}`;
-			console.log(this.musicUrl);
+			this.musicAudio = new Audio(this.musicUrl);
+			this.musicAudio.play();
+			this.musicAudio.onended = () => {
+				this.isPlaying = false;
+			};
 			this.isPlaying = true;
 			this.durationInSeconds = 0;
 			this.fixedDuration = "";
-			this.currentDuration = 0;
+			this.currentDuration = this.musicAudio.currentTime;
 			this.convertDuration();
+		},
+		volume() {
+			this.musicAudio.volume = this.volume / 100;
+			localStorage.volume = this.volume;
 		},
 	},
 	methods: {
 		async pausePlayMusic() {
-			// this.isPlaying = true;
-		},
-		changeVolume() {
-			localStorage.volume = this.volume;
-			console.log(this.volume);
+			if (this.musicAudio.paused) {
+				this.isPlaying = true;
+				this.musicAudio.play();
+			} else {
+				this.isPlaying = false;
+				this.musicAudio.pause();
+			}
 		},
 		changeCurrentDuration() {
-			console.log(this.currentDuration);
+			this.musicAudio.currentTime = this.currentDuration;
 		},
 		manageWordSize() {
 			if (window.innerWidth < 1000) {

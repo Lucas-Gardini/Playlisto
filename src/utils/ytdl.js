@@ -17,13 +17,13 @@ class youtubeDownloader {
 		this.deleteMusics();
 
 		musicName = this.slugify(musicName, "");
+		musicName = String(musicName).replaceAll("*", "");
 		let file;
 		return new Promise((resolve) => {
 			this.ytdl(url, {
 				filter: "audioonly",
 			}).pipe((file = this.fs.createWriteStream(`musics/${musicName}.mp3`)));
 			file.on("finish", () => {
-				console.log("Downloaded...");
 				resolve(this.path.resolve(`musics/${musicName}.mp3`));
 			});
 			file.on("error", (err) => {
@@ -34,15 +34,16 @@ class youtubeDownloader {
 	}
 
 	deleteMusics() {
-		this.fs.readdirSync(`music`, (err, files) => {
-			if (err) throw err;
-
-			for (const file of files) {
-				this.fs.unlinkSync(this.path.join(`music`, file), (err) => {
+		const files = this.fs.readdirSync("musics");
+		for (const file of files) {
+			try {
+				this.fs.unlinkSync(this.path.join(`musics`, file), (err) => {
 					if (err) throw err;
 				});
+			} catch (error) {
+				console.log("Failed to delete file. I'll try next time");
 			}
-		});
+		}
 	}
 }
 
