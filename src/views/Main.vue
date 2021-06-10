@@ -23,6 +23,7 @@
 				:channel="music.channel"
 				:musicThumb="music.musicThumb"
 				:link="music.link"
+				:duration="music.duration"
 			/>
 		</div>
 	</div>
@@ -1690,6 +1691,7 @@ export default {
 				channel: "",
 				musicThumb: "",
 				link: "",
+				duration: "",
 			},
 		};
 	},
@@ -1708,6 +1710,7 @@ export default {
 				channel: chosenVideo.author.name,
 				musicThumb: chosenVideo.bestThumbnail.url,
 				link: chosenVideo.url,
+				duration: chosenVideo.duration,
 			};
 		},
 	},
