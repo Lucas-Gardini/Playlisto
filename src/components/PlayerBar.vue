@@ -23,7 +23,7 @@
 			</div>
 		</div>
 		<div class="controller-container">
-			<div style="width: 100%; display: flex; margin-top: 20px">
+			<div style="width: 100%; display: flex; margin-top: 20px;">
 				<div style="margin: auto">
 					<el-button
 						style="background-color: transparent; color: #fbfbfb"
@@ -96,6 +96,7 @@
 
 <script>
 import { youtubeDownloader } from "../utils/ytdl";
+import growingFile from "growing-file";
 
 export default {
 	props: {
@@ -129,9 +130,18 @@ export default {
 	watch: {
 		async name() {
 			this.musicUrl = "";
+			if (this.musicAudio !== null) {
+				this.musicAudio.pause();
+			}
 			const returnedUrl = await this.ytDownloader.download(this.link, this.name);
-			this.musicUrl = `file:///${returnedUrl}`;
-			this.musicAudio = new Audio(this.musicUrl);
+			this.musicAudio = new Audio(
+				growingFile.open(returnedUrl, {
+					timeout: 4000,
+					interval: 100,
+					startFromEnd: true,
+				})._path
+			);
+			this.musicAudio.volume = this.volume / 100;
 			this.musicAudio.play();
 			this.musicAudio.onended = () => {
 				this.isPlaying = false;
@@ -180,12 +190,7 @@ export default {
 		toMinSecTime(time) {
 			var mins = ~~((time % 3600) / 60);
 			var secs = ~~time % 60;
-
-			// Output like "1:01" or "4:03:59" or "123:03:59"
 			var ret = "";
-			// if (hrs > 0) {
-			// 	ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
-			// }
 			ret += (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "");
 			ret += "" + secs;
 			return ret;

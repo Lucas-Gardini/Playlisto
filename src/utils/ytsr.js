@@ -8,10 +8,18 @@ class youtubeSearcher {
 	}
 
 	async search(args) {
+		let refinedSearch = {
+			items: [],
+		};
 		this.searchResults = await this.ytsr(args, {
 			limit: 30,
 		});
-		return this.searchResults;
+		for (let video of this.searchResults.items) {
+			if (video.type === "video") {
+				refinedSearch.items.push(video);
+			}
+		}
+		return refinedSearch;
 	}
 
 	get videos() {
