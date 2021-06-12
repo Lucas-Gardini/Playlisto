@@ -72,6 +72,8 @@
 						style="width: 200px"
 						type="range"
 						@change="changeCurrentDuration()"
+						@mousedown="stopBar()"
+						@mouseup="continueBar()"
 						v-model="currentDuration"
 						:max="durationInSeconds"
 						:maxlength="durationInSeconds"
@@ -110,7 +112,7 @@ export default {
 		this.ytDownloader.start();
 		this.manageWordSize();
 		window.addEventListener("resize", this.manageWordSize);
-		setInterval(() => {
+		this.verifyMusicDuration = setInterval(() => {
 			this.currentDuration = this.musicAudio.currentTime;
 		}, 1000);
 	},
@@ -121,6 +123,7 @@ export default {
 			musicAudio: new Audio(),
 			volume: Number(localStorage.volume) || 100,
 			durationInSeconds: 0,
+			verifyMusicDuration: null,
 			fixedDuration: "",
 			currentDuration: 0,
 			isPlaying: false,
@@ -144,6 +147,7 @@ export default {
 			this.musicAudio.volume = this.volume / 100;
 			this.musicAudio.play();
 			this.musicAudio.onended = () => {
+				this.stopBar();
 				this.isPlaying = false;
 			};
 			this.isPlaying = true;
@@ -158,6 +162,14 @@ export default {
 		},
 	},
 	methods: {
+		stopBar() {
+			clearInterval(this.verifyMusicDuration);
+		},
+		continueBar() {
+			this.verifyMusicDuration = setInterval(() => {
+				this.currentDuration = this.musicAudio.currentTime;
+			}, 1000);
+		},
 		async pausePlayMusic() {
 			if (this.musicAudio.paused) {
 				this.isPlaying = true;

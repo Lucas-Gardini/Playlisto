@@ -25,7 +25,8 @@
 		</div>
 		<div class="content">
 			<div
-				style="display: grid; width: 100%; place-items: left; padding-left: 10px; padding-top: 10px"
+				:class="typeof ytSearchResults[0] === 'undefined' ? 'fullsize-hidden' : ''"
+				style="display: grid; width: 100%; place-items: left; padding-left: 10px; padding-top: 10px; margin-bottom: 20px"
 			>
 				<el-row :gutter="1" style="width: 600px;">
 					<el-col :span="12"
@@ -43,8 +44,44 @@
 					</el-col>
 				</el-row>
 			</div>
-			<div v-for="(video, i) in ytSearchResults" :key="i">
-				<ul>
+			<div>
+				<el-container
+					v-for="(video, i) in ytSearchResults"
+					:key="i"
+					style="padding: 0 !important"
+				>
+					<el-aside width="200px">
+						<el-image
+							style="width: 200px; height: auto"
+							:src="video.bestThumbnail.url"
+							fit="cover"
+						></el-image>
+					</el-aside>
+					<el-main
+						><div style="padding: 0 !important; padding-left: 10px">
+							<span>{{ video.title }} | {{ video.duration }}</span>
+							<div class="bottom">
+								<time class="time">{{ video.author.name }}</time
+								><br />
+								<div style="margin-top: 10px">
+									<el-button
+										type="danger"
+										icon="bx bx-play"
+										circle
+										size="mini"
+										@click="changeCurrentMusic(i)"
+									></el-button>
+									<el-button
+										type="text"
+										icon="bx bx-list-plus"
+										circle
+										@click="changeCurrentMusic(i)"
+									></el-button>
+								</div>
+							</div></div
+					></el-main>
+				</el-container>
+				<!-- <ul>
 					<li>{{ video.title }}</li>
 					<li>{{ video.author.name }}</li>
 					<li><img :src="video.bestThumbnail.url" width="32" height="32" /></li>
@@ -53,7 +90,7 @@
 					<li><a :href="video.url" target="_blank">ass</a></li>
 					<li>{{ video.views }}</li>
 					<li><button @click="changeCurrentMusic(i)">play</button></li>
-				</ul>
+				</ul> -->
 			</div>
 		</div>
 		<div class="player" style="background-color: whitesmoke">
@@ -140,12 +177,15 @@ export default {
 .content {
 	grid-area: content;
 	overflow-y: auto;
-	max-height: 620px;
+	height: 95vh;
 	overflow-x: hidden;
 }
 
 .player {
 	grid-area: player;
+	position: absolute;
+	bottom: 0%;
+	width: 100%;
 	min-height: 100px;
 }
 
@@ -163,5 +203,26 @@ export default {
 	100% {
 		transform: rotate(0deg);
 	}
+}
+
+.el-loading-spinner i {
+	color: #f56c6c !important;
+}
+
+.el-loading-text {
+	color: #f56c6c !important;
+}
+
+.fullsize-hidden {
+	overflow-y: hidden !important;
+}
+
+.playBtn {
+	position: absolute;
+	top: 60%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	-ms-transform: translate(-50%, -50%);
+	opacity: 0;
 }
 </style>

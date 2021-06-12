@@ -8,7 +8,7 @@ protocol.registerSchemesAsPrivileged([
 	{ scheme: "app", privileges: { secure: true, standard: true } },
 ]);
 
-var load, main;
+var main;
 
 async function createWindow() {
 	// Create the browser window.
@@ -37,33 +37,7 @@ async function createWindow() {
 		win.loadURL("app://./index.html");
 	}
 
-	// Create the splash screen
-	const splash = new BrowserWindow({
-		width: 300,
-		height: 300,
-		frame: false,
-		resizable: false,
-		center: true,
-		darkTheme: true,
-		maximizable: false,
-		minimizable: false,
-		movable: false,
-		backgroundColor: "#121212",
-	});
-	splash.webContents.on("devtools-opened", () => {
-		splash.webContents.closeDevTools();
-	});
-	if (process.env.WEBPACK_DEV_SERVER_URL) {
-		// Load the url of the dev server if in development mode
-		await splash.loadURL(`${process.env.WEBPACK_DEV_SERVER_URL}/loading.html`);
-	} else {
-		createProtocol("app");
-		// Load the index.html when not in development
-		splash.loadURL("app://./loading.html");
-	}
-
 	main = win;
-	load = splash;
 	if (typeof win == "undefined" || typeof load == "undefined") {
 		console.log("Algo deu errado, PUTA QUE PARIU EM");
 		app.quit();
@@ -89,7 +63,32 @@ app.on("activate", () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+var load;
 app.on("ready", async () => {
+	// Create the splash screen
+	load = new BrowserWindow({
+		width: 300,
+		height: 300,
+		frame: false,
+		resizable: false,
+		center: true,
+		darkTheme: true,
+		maximizable: false,
+		minimizable: false,
+		movable: false,
+		backgroundColor: "#121212",
+	});
+	load.webContents.on("devtools-opened", () => {
+		load.webContents.closeDevTools();
+	});
+	if (process.env.WEBPACK_DEV_SERVER_URL) {
+		// Load the url of the dev server if in development mode
+		await load.loadURL(`${process.env.WEBPACK_DEV_SERVER_URL}/loading.html`);
+	} else {
+		createProtocol("app");
+		// Load the index.html when not in development
+		load.loadURL("app://./loading.html");
+	}
 	await createWindow();
 });
 
