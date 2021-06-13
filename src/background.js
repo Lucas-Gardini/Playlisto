@@ -1,6 +1,5 @@
 "use strict";
-
-import { app, protocol, BrowserWindow, ipcMain } from "electron";
+import { app, protocol, BrowserWindow, ipcMain, dialog } from "electron";
 import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
 const isDevelopment = process.env.NODE_ENV !== "production";
 // Scheme must be registered before the app is ready
@@ -125,6 +124,16 @@ ipcMain.handle("ManageWindow", async (event, args) => {
 		default:
 			break;
 	}
+});
+
+ipcMain.on("saveFileLocation", (event) => {
+	dialog
+		.showOpenDialog({
+			properties: ["openDirectory"],
+		})
+		.then((file) => {
+			event.reply("returnedSaveLocation", [file.canceled, file.filePaths]);
+		});
 });
 
 // Exit cleanly on request from parent process in development mode.

@@ -37,6 +37,7 @@
 						:disabled="duration.length > 0 ? false : true"
 						size="mini"
 						icon="bx bx-skip-previous"
+						@click="$emit('previousMusic')"
 						circle
 					></el-button>
 					<el-button
@@ -49,6 +50,7 @@
 					<el-button
 						style="background-color: transparent; color: #fbfbfb"
 						:disabled="duration.length > 0 ? false : true"
+						@click="$emit('nextMusic')"
 						size="mini"
 						icon="bx bx-skip-next"
 						circle
@@ -107,6 +109,7 @@ export default {
 		musicThumb: String,
 		link: String,
 		duration: String,
+		playlist: Array,
 	},
 	mounted() {
 		this.ytDownloader.start();
@@ -125,6 +128,7 @@ export default {
 			durationInSeconds: 0,
 			verifyMusicDuration: null,
 			fixedDuration: "",
+			currentMusic: 0,
 			currentDuration: 0,
 			isPlaying: false,
 			isWindowSizeSmall: false,
@@ -149,12 +153,20 @@ export default {
 			this.musicAudio.onended = () => {
 				this.stopBar();
 				this.isPlaying = false;
+				if (this.playlist.length > 0 && this.currentMusic <= this.playlist.length) {
+					this.isPlaying = true;
+					this.continueBar();
+					this.$emit("musicFinished");
+				}
 			};
 			this.isPlaying = true;
 			this.durationInSeconds = 0;
 			this.fixedDuration = "";
 			this.currentDuration = this.musicAudio.currentTime;
 			this.convertDuration();
+		},
+		async playlist() {
+			console.log("Playlist changed");
 		},
 		volume() {
 			this.musicAudio.volume = this.volume / 100;
@@ -172,9 +184,11 @@ export default {
 		},
 		async pausePlayMusic() {
 			if (this.musicAudio.paused) {
+				this.continueBar();
 				this.isPlaying = true;
 				this.musicAudio.play();
 			} else {
+				this.stopBar();
 				this.isPlaying = false;
 				this.musicAudio.pause();
 			}

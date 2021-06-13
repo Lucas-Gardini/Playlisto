@@ -24,6 +24,29 @@
 			</el-menu>
 		</div>
 		<div class="content">
+			<el-dropdown style="position: fixed; top: 5%; right: 2.5%; z-index: 999;">
+				<el-button type="text"><i class="bx bxs-playlist el-icon--right"></i></el-button>
+				<template #dropdown>
+					<el-dropdown-menu>
+						<el-dropdown-item v-for="(music, i) in playlist" :key="i">
+							<el-row :gutter="20" style="margin-bottom: 5px !important">
+								<el-col :span="20">{{
+									`${String(music.title).substring(0, 40)}...`
+								}}</el-col>
+								<el-col :span="2">
+									<el-button
+										type="text"
+										style="color: red"
+										icon="el-icon-delete"
+										circle
+										@click="removeFromPlaylist(i)"
+									></el-button>
+								</el-col>
+							</el-row>
+						</el-dropdown-item>
+					</el-dropdown-menu>
+				</template>
+			</el-dropdown>
 			<div
 				:class="typeof ytSearchResults[0] === 'undefined' ? 'fullsize-hidden' : ''"
 				style="display: grid; width: 100%; place-items: left; padding-left: 10px; padding-top: 10px; margin-bottom: 20px"
@@ -75,7 +98,13 @@
 										type="text"
 										icon="bx bx-list-plus"
 										circle
-										@click="changeCurrentMusic(i)"
+										@click="addToPlaylist(i)"
+									></el-button>
+									<el-button
+										type="text"
+										icon="bx bxs-download"
+										circle
+										@click="selectSaveLocation(video.url, video.title)"
 									></el-button>
 								</div>
 							</div></div
@@ -100,6 +129,10 @@
 				:musicThumb="music.musicThumb"
 				:link="music.link"
 				:duration="music.duration"
+				:playlist="playlist"
+				@musicFinished="nextMusic()"
+				@nextMusic="nextMusic()"
+				@previousMusic="previousMusic()"
 			/>
 		</div>
 	</div>
@@ -108,6 +141,10 @@
 <script>
 import PlayerBar from "../components/PlayerBar.vue";
 import { youtubeSearcher } from "../utils/ytsr";
+import { ipcRenderer } from "electron";
+import ytdl from "ytdl-core";
+import slugify from "slugify";
+import fs from "fs";
 export default {
 	components: {
 		PlayerBar,
@@ -124,6 +161,8 @@ export default {
 				link: "",
 				duration: "",
 			},
+			playlist: [],
+			currentMusic: 0,
 		};
 	},
 	async mounted() {
@@ -142,15 +181,80 @@ export default {
 			loading.close();
 			this.loading = false;
 		},
-		changeCurrentMusic(videoIndex) {
-			const chosenVideo = this.ytSearchResults[videoIndex];
-			this.music = {
-				name: chosenVideo.title,
-				channel: chosenVideo.author.name,
-				musicThumb: chosenVideo.bestThumbnail.url,
-				link: chosenVideo.url,
-				duration: chosenVideo.duration,
-			};
+		changeCurrentMusic(videoIndex, isPlaylist = false) {
+			let chosenVideo = null;
+			let okToContinue = false;
+			if (isPlaylist) {
+				if (videoIndex > this.playlist.length || videoIndex < this.playlist.length) {
+					okToContinue = false;
+				} else {
+					okToContinue = true;
+				}
+				chosenVideo = this.playlist[videoIndex];
+			} else {
+				okToContinue = true;
+				chosenVideo = this.ytSearchResults[videoIndex];
+				this.playlist = [chosenVideo];
+			}
+			if (okToContinue) {
+				this.music = {
+					name: chosenVideo.title,
+					channel: chosenVideo.author.name,
+					musicThumb: chosenVideo.bestThumbnail.url,
+					link: chosenVideo.url,
+					duration: chosenVideo.duration,
+				};
+				return true;
+			}
+			return false;
+		},
+		previousMusic() {
+			const okToContinue = this.changeCurrentMusic(this.currentMusic - 1, true);
+			if (okToContinue) {
+				this.currentMusic = this.currentMusic - 1;
+			}
+		},
+		nextMusic() {
+			const okToContinue = this.changeCurrentMusic(this.currentMusic + 1, true);
+			if (okToContinue) {
+				this.currentMusic = this.currentMusic + 1;
+			}
+		},
+		addToPlaylist(videoIndex) {
+			this.playlist.push(this.ytSearchResults[videoIndex]);
+			this.playlist = [...this.playlist];
+		},
+		removeFromPlaylist(videoIndex) {
+			this.playlist.splice(videoIndex, 1);
+			this.playlist = [...this.playlist];
+		},
+		async selectSaveLocation(videoUrl, musicName) {
+			await ipcRenderer.send("saveFileLocation");
+			await ipcRenderer.once("returnedSaveLocation", (sender, response) => {
+				if (response[0]) {
+					console.log("User has cancelled");
+				} else {
+					musicName = musicName.replaceAll("*", "");
+					const downloadPath = `${response[1]}/${slugify(musicName)}.mp3`;
+					this.downloadMusic(videoUrl, downloadPath);
+				}
+			});
+		},
+		async downloadMusic(videoUrl, path) {
+			const loading = this.$loading({
+				lock: false,
+				text: "Fazendo Download...",
+				spinner: "bx bxs-download",
+				background: "rgba(0, 0, 0, 0.7)",
+			});
+			let file;
+			ytdl(videoUrl, {
+				filter: "audioonly",
+			}).pipe((file = fs.createWriteStream(path)));
+			file.on("finish", () => {
+				loading.close();
+				console.log("Downloaded");
+			});
 		},
 	},
 	name: "Home",

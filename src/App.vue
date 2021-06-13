@@ -32,6 +32,23 @@ body {
 	color: #fbfbfb;
 }
 
+::-webkit-scrollbar {
+	width: 5px;
+	height: 5px;
+}
+::-webkit-scrollbar-thumb {
+	background: linear-gradient(13deg, #f56c6c 14%, #f56c6c 64%);
+	border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(13deg, #f04d4d 14%, #f04d4d 64%);
+}
+::-webkit-scrollbar-track {
+	background: #ffffff;
+	border-radius: 5px;
+	box-shadow: inset 7px 10px 12px #f0f0f0;
+}
+
 /* Enter and leave animations can use different */
 /* durations and timing functions.              */
 .transition-fade-enter-active {
