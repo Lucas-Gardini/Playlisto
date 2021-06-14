@@ -34,7 +34,7 @@
 					></el-button>
 					<el-button
 						style="background-color: transparent; color: #fbfbfb"
-						:disabled="duration.length > 0 ? false : true"
+						:disabled="!canPlay"
 						size="mini"
 						icon="bx bx-skip-previous"
 						@click="$emit('previousMusic')"
@@ -49,7 +49,7 @@
 					></el-button>
 					<el-button
 						style="background-color: transparent; color: #fbfbfb"
-						:disabled="duration.length > 0 ? false : true"
+						:disabled="!canPlay"
 						@click="$emit('nextMusic')"
 						size="mini"
 						icon="bx bx-skip-next"
@@ -132,10 +132,16 @@ export default {
 			currentDuration: 0,
 			isPlaying: false,
 			isWindowSizeSmall: false,
+			canPlay: false,
 		};
 	},
 	watch: {
 		async name() {
+			this.canPlay = false;
+			setTimeout(() => {
+				this.canPlay = true;
+			}, 800);
+			console.log("Music changed");
 			this.musicUrl = "";
 			if (this.musicAudio !== null) {
 				this.musicAudio.pause();
