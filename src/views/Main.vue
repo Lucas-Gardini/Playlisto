@@ -185,11 +185,18 @@ export default {
 			let chosenVideo = null;
 			let okToContinue = false;
 			if (isPlaylist) {
-				if (videoIndex > this.playlist.length || videoIndex < this.playlist.length) {
+				// console.log(videoIndex);
+				// console.log(this.playlist.length);
+				if (
+					videoIndex > this.playlist.length ||
+					videoIndex <= -1 ||
+					videoIndex === this.playlist.length
+				) {
 					okToContinue = false;
 				} else {
 					okToContinue = true;
 				}
+				// console.log(okToContinue);
 				chosenVideo = this.playlist[videoIndex];
 			} else {
 				okToContinue = true;
@@ -205,8 +212,9 @@ export default {
 					duration: chosenVideo.duration,
 				};
 				return true;
+			} else {
+				return false;
 			}
-			return false;
 		},
 		previousMusic() {
 			const okToContinue = this.changeCurrentMusic(this.currentMusic - 1, true);
