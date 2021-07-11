@@ -1,6 +1,7 @@
 class youtubeDownloader {
 	async start() {
 		this.requireModules();
+		this.deleteMusics();
 	}
 
 	requireModules() {
@@ -14,7 +15,6 @@ class youtubeDownloader {
 		if (!this.fs.existsSync("musics")) {
 			this.fs.mkdirSync("musics");
 		}
-		this.deleteMusics();
 
 		musicName = this.slugify(musicName, "");
 		musicName = String(musicName).replaceAll("*", "");
@@ -34,15 +34,23 @@ class youtubeDownloader {
 	}
 
 	deleteMusics() {
-		const files = this.fs.readdirSync("musics");
-		for (const file of files) {
-			try {
-				this.fs.unlinkSync(this.path.join(`musics`, file), (err) => {
-					if (err) throw err;
-				});
-			} catch (error) {
-				console.log("Failed to delete file. I'll try next time");
+		try {
+			if (this.fs.existsSync("musics")) {
+				const files = this.fs.readdirSync("musics");
+				for (const file of files) {
+					if (!(file === "playlists.json")) {
+						try {
+							this.fs.unlinkSync(this.path.join(`musics`, file), (err) => {
+								if (err) throw err;
+							});
+						} catch (error) {
+							console.log("Failed to delete file. I'll try next time");
+						}
+					}
+				}
 			}
+		} catch (err) {
+			console.log("Tem erro na merda do ytdl");
 		}
 	}
 }

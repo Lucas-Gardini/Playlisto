@@ -5,7 +5,7 @@ module.exports = {
 			builderOptions: {
 				appId: "com.playlisto.kowalskijr",
 				win: {
-					// icon: "public/favicon.ico",
+					icon: "public/favicon.ico",
 				},
 			},
 		},

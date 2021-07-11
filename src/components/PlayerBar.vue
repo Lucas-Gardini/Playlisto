@@ -1,5 +1,5 @@
 <template>
-	<div class="PlayerBar">
+	<div class="PlayerBar" v-loading="true" element-loading-text=" ">
 		<audio ref="musicPlayer" :src="musicUrl"></audio>
 		<div class="track-container">
 			<div style="width: 99%; height: 100px; display: grid; place-items: center">
@@ -17,9 +17,22 @@
 					:title="name"
 					v-if="name.length > 0"
 				>
-					{{ isWindowSizeSmall ? `${name.substring(0, 22)}...` : name }}
+					<a class="link2" @click="openVideoUrl()" href="javascript:void(0)"
+						><strong>{{
+							isWindowSizeSmall ? `${name.substring(0, 22)}...` : name
+						}}</strong></a
+					>
 				</p>
-				<p style="margin: auto; margin-left: 10px; margin-top: 5px">{{ channel }}</p>
+				<p
+					v-if="channel.length > 0"
+					style="margin: auto; margin-left: 10px; margin-top: 5px"
+				>
+					<a class="link" @click="openChannelUrl()" href="javascript:void(0)"
+						><strong>{{
+							isWindowSizeSmall ? `${channel.substring(0, 6)}...` : channel
+						}}</strong></a
+					>
+				</p>
 			</div>
 		</div>
 		<div class="controller-container">
@@ -37,7 +50,7 @@
 						:disabled="!canPlay"
 						size="mini"
 						icon="bx bx-skip-previous"
-						@click="$emit('previousMusic')"
+						@click="previousMusic()"
 						circle
 					></el-button>
 					<el-button
@@ -100,19 +113,37 @@
 
 <script>
 import { youtubeDownloader } from "../utils/ytdl";
-import growingFile from "growing-file";
 
 export default {
 	props: {
 		name: String,
 		channel: String,
+		channelUrl: String,
 		musicThumb: String,
 		link: String,
 		duration: String,
 		playlist: Array,
 	},
 	mounted() {
+		console.log(this.channelUrl);
+
+		// creating loader
+		const loaderMask = document.querySelector(".el-loading-mask");
+		loaderMask.className = "el-loading-mask hidden";
+		loaderMask.innerHTML = `<div class="har-loader">
+									<div class="har-sound-1"></div>
+									<div class="har-sound-2"></div>
+									<div class="har-sound-3"></div>
+									<div class="har-sound-4"></div>
+									<div class="har-sound-5"></div>
+									<div class="har-sound-6"></div>
+									<div class="har-sound-7"></div>
+									<div class="har-sound-8"></div>
+									<div class="har-sound-9"></div>
+								</div>`;
+
 		this.ytDownloader.start();
+		this.ytDownloader.deleteMusics();
 		this.manageWordSize();
 		window.addEventListener("resize", this.manageWordSize);
 		this.verifyMusicDuration = setInterval(() => {
@@ -137,23 +168,17 @@ export default {
 	},
 	watch: {
 		async name() {
+			document.querySelector(".el-loading-mask.hidden").className = "el-loading-mask";
 			this.canPlay = false;
 			setTimeout(() => {
 				this.canPlay = true;
 			}, 800);
-			console.log("Music changed");
 			this.musicUrl = "";
 			if (this.musicAudio !== null) {
 				this.musicAudio.pause();
 			}
 			const returnedUrl = await this.ytDownloader.download(this.link, this.name);
-			this.musicAudio = new Audio(
-				growingFile.open(returnedUrl, {
-					timeout: 4000,
-					interval: 100,
-					startFromEnd: true,
-				})._path
-			);
+			this.musicAudio = new Audio(returnedUrl);
 			this.musicAudio.volume = this.volume / 100;
 			this.musicAudio.play();
 			this.musicAudio.onended = () => {
@@ -170,6 +195,7 @@ export default {
 			this.fixedDuration = "";
 			this.currentDuration = this.musicAudio.currentTime;
 			this.convertDuration();
+			document.querySelector(".el-loading-mask").className = "el-loading-mask hidden";
 		},
 		async playlist() {
 			console.log("Playlist changed");
@@ -180,6 +206,17 @@ export default {
 		},
 	},
 	methods: {
+		openChannelUrl() {
+			require("electron").shell.openExternal(this.channelUrl);
+		},
+		openVideoUrl() {
+			require("electron").shell.openExternal(this.link);
+		},
+		previousMusic() {
+			this.$emit("previousMusic");
+			this.currentDuration = 0;
+			this.changeCurrentDuration();
+		},
 		stopBar() {
 			clearInterval(this.verifyMusicDuration);
 		},
@@ -239,6 +276,7 @@ export default {
 	grid-template-rows: auto;
 	grid-column-gap: 0px;
 	grid-row-gap: 0px;
+	z-index: 2;
 }
 
 .track-container {
@@ -269,5 +307,111 @@ export default {
 	background-color: #fbfbfb;
 	border-radius: 100%;
 	font-size: larger;
+}
+
+.el-loading-mask {
+	background-color: rgba(18, 18, 18, 0.9) !important;
+}
+
+.har-loader {
+	height: 100%;
+	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
+}
+.har-loader div {
+	margin: 0 1.5px;
+	background-color: #333;
+	height: 100%;
+	width: 6px;
+	background: #f56c6c;
+	vertical-align: middle;
+	border-radius: 10px;
+	display: inline-block;
+	-webkit-animation: har-loader-stretch 2s infinite ease-in-out;
+	animation: har-loader-stretch 2s infinite ease-in-out;
+	box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+}
+.har-loader .har-sound-5 {
+	-webkit-animation-delay: -1.1s;
+	animation-delay: -1.1s;
+}
+.har-loader .har-sound-4,
+.har-loader .har-sound-6 {
+	-webkit-animation: har-loader-stretch-twice 2s infinite ease-in-out;
+	animation: har-loader-stretch-twice 2s infinite ease-in-out;
+	-webkit-animation-delay: -0.9s;
+	animation-delay: -0.9s;
+}
+.har-loader .har-sound-2,
+.har-loader .har-sound-8 {
+	-webkit-animation-delay: -0.7s;
+	animation-delay: -0.7s;
+}
+.har-loader .har-sound-1,
+.har-loader .har-sound-9 {
+	-webkit-animation-delay: -0.5s;
+	animation-delay: -0.5s;
+}
+.har-loader .har-sound-3,
+.har-loader .har-sound-7 {
+	-webkit-animation-delay: -0.4s;
+	animation-delay: -0.4s;
+}
+
+@keyframes har-loader-stretch-twice {
+	0%,
+	35%,
+	70%,
+	100% {
+		height: 15px;
+	}
+	20%,
+	50% {
+		height: 60px;
+	}
+}
+@-webkit-keyframes har-loader-stretch {
+	0%,
+	40%,
+	100% {
+		height: 15px;
+	}
+	20% {
+		height: 60px;
+	}
+}
+@keyframes har-loader-stretch {
+	0%,
+	40%,
+	100% {
+		height: 15px;
+	}
+	20% {
+		height: 60px;
+	}
+}
+
+.hidden {
+	opacity: 0;
+	display: none;
+}
+
+.link {
+	color: #fff;
+	text-decoration: bold;
+}
+.link:hover {
+	text-align: bold;
+}
+
+.link2 {
+	color: #fff;
+	text-decoration: none;
+}
+.link2:hover {
+	text-decoration: underline;
 }
 </style>

@@ -1,6 +1,10 @@
 {
-	"name": "playlisto",
-	"version": "0.1.0",
+	"name": "Playlisto",
+	"version": "1.0.0",
+	"author": {
+		"name": "KowalskiJr"
+	},
+	"description": "Ouça suas músicas preferidas do youtube em um aplicativo spotify-friendly!",
 	"private": true,
 	"scripts": {
 		"serve": "vue-cli-service serve",
@@ -35,7 +39,7 @@
 		"slugify": "^1.5.3",
 		"sound-play": "^1.1.0",
 		"vue-cli-plugin-electron-builder": "~2.0.0",
-		"ytdl-core": "^4.8.2",
+		"ytdl-core": "^4.8.3",
 		"ytpl": "^2.2.1",
 		"ytsr": "^3.5.0"
 	},
