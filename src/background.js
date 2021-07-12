@@ -1,5 +1,6 @@
 "use strict";
 import { app, protocol, BrowserWindow, ipcMain, dialog } from "electron";
+const fetch = require("electron-fetch").default;
 import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
 const isDevelopment = process.env.NODE_ENV !== "production";
 // Scheme must be registered before the app is ready
@@ -135,6 +136,64 @@ ipcMain.on("saveFileLocation", (event) => {
 		.then((file) => {
 			event.reply("returnedSaveLocation", [file.canceled, file.filePaths]);
 		});
+});
+
+ipcMain.handle("getLyrics", async (event, args) => {
+	const delimiter1 =
+		'</div></div></div></div><div class="hwc"><div class="BNeawe tAd8D AP7Wnd"><div><div class="BNeawe tAd8D AP7Wnd">';
+	const delimiter2 =
+		'</div></div></div></div></div><div><span class="hwc"><div class="BNeawe uEec3 AP7Wnd">';
+	const url = "https://www.google.com/search?q=";
+
+	async function parse(title = "", author = "") {
+		if (!title && !author) throw new TypeError("Both title and author cannot be null");
+
+		var lyrics;
+
+		try {
+			console.log(`${url}${encodeURIComponent(author + " " + title)}+lyrics`);
+			lyrics = await fetch(`${url}${encodeURIComponent(author + " " + title)}+lyrics`);
+			lyrics = await lyrics.textConverted();
+			[, lyrics] = lyrics.split(delimiter1);
+			[lyrics] = lyrics.split(delimiter2);
+		} catch (e) {
+			console.log(`erro: ${e}`);
+			try {
+				lyrics = await fetch(
+					`${url}${encodeURIComponent(author + " " + title)}+song+lyrics`
+				);
+				lyrics = await lyrics.textConverted();
+				[, lyrics] = lyrics.split(delimiter1);
+				[lyrics] = lyrics.split(delimiter2);
+			} catch {
+				try {
+					lyrics = await fetch(`${url}${encodeURIComponent(author + " " + title)}+song`);
+					lyrics = await lyrics.textConverted();
+					[, lyrics] = lyrics.split(delimiter1);
+					[lyrics] = lyrics.split(delimiter2);
+				} catch {
+					try {
+						lyrics = await fetch(`${url}${encodeURIComponent(author + " " + title)}`);
+						lyrics = await lyrics.textConverted(); // Convert to text
+						[, lyrics] = lyrics.split(delimiter1); // Split it by the first delimiter
+						[lyrics] = lyrics.split(delimiter2); // Split it by the second delimiter
+					} catch {
+						lyrics = ""; // Give up, couldn't find lyrics
+					}
+				}
+			}
+		}
+
+		const split = lyrics.split("\n");
+		var final = "";
+		for (var i = 0; i < split.length; i++) {
+			final = `${final}${split[i]}\n`;
+		}
+		return final.trim() || false; // Return false if no lyrics were found
+	}
+
+	const lyrics = await parse(args.title);
+	return lyrics ? lyrics : "No Lyrics Found.";
 });
 
 // Exit cleanly on request from parent process in development mode.

@@ -20,9 +20,17 @@ class youtubeDownloader {
 		musicName = String(musicName).replaceAll("*", "");
 		let file;
 		return new Promise((resolve) => {
+			if (this.fs.existsSync(this.path.resolve(`musics/${musicName}.mp3`))) {
+				resolve(this.path.resolve(`musics/${musicName}.mp3`));
+			}
+
 			this.ytdl(url, {
 				filter: "audioonly",
-			}).pipe((file = this.fs.createWriteStream(`musics/${musicName}.mp3`)));
+			})
+				.pipe((file = this.fs.createWriteStream(`musics/${musicName}.mp3`)))
+				.on("close", () => {
+					resolve(this.path.resolve(`musics/${musicName}.mp3`));
+				});
 			file.on("finish", () => {
 				resolve(this.path.resolve(`musics/${musicName}.mp3`));
 			});

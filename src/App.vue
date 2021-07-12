@@ -21,9 +21,9 @@ export default {
 </script>
 
 <style>
-@import url("https://fonts.googleapis.com/css2?family=Lato&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans&display=swap");
 * {
-	font-family: "Lato", sans-serif;
+	font-family: "Open Sans", sans-serif;
 }
 
 body {

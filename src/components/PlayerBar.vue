@@ -101,11 +101,55 @@
 		</div>
 		<div class="volume">
 			<div style="width: 100%; text-align: right; margin-right: 10px">
-				<i v-if="volume >= 50" class="bx bxs-volume-full"></i>
-				<i v-else-if="volume >= 30 && volume <= 49" class="bx bxs-volume-low"></i>
-				<i v-else-if="volume > 0 && volume <= 29" class="bx bxs-volume"></i>
-				<i v-else class="bx bxs-volume-mute"></i>
+				<el-popover
+					v-if="this.name.length > 0"
+					placement="top-start"
+					:width="10"
+					trigger="hover"
+					content="Ver a letra"
+				>
+					<template #reference>
+						<i
+							:class="
+								gettingLyrics
+									? 'bx bx-loader-alt getLyrics loading'
+									: 'bx bxs-microphone getLyrics'
+							"
+							@click="getLyrics()"
+						></i>
+					</template> </el-popover
+				>&nbsp;
+				<i
+					@click="mute()"
+					style="cursor: pointer"
+					v-if="volume >= 50"
+					class="bx bxs-volume-full"
+				></i>
+				<i
+					@click="mute()"
+					style="cursor: pointer"
+					v-else-if="volume >= 30 && volume <= 49"
+					class="bx bxs-volume-low"
+				></i>
+				<i
+					@click="mute()"
+					style="cursor: pointer"
+					v-else-if="volume > 0 && volume <= 29"
+					class="bx bxs-volume"
+				></i>
+				<i @click="mute()" style="cursor: pointer" v-else class="bx bxs-volume-mute"></i>
 				<input v-model="volume" type="range" />
+			</div>
+		</div>
+		<div :class="lyricsClass">
+			<el-page-header
+				@back="lyricsClass = `lyrics`"
+				:content="`Letra da música: ${this.name}`"
+				style="border-bottom: 1px solid black; margin-right: 40px"
+			>
+			</el-page-header>
+			<div>
+				<p v-html="lyrics"></p>
 			</div>
 		</div>
 	</div>
@@ -113,6 +157,7 @@
 
 <script>
 import { youtubeDownloader } from "../utils/ytdl";
+import lyrics from "../utils/lyrics";
 
 export default {
 	props: {
@@ -125,9 +170,6 @@ export default {
 		playlist: Array,
 	},
 	mounted() {
-		console.log(this.channelUrl);
-
-		// creating loader
 		const loaderMask = document.querySelector(".el-loading-mask");
 		loaderMask.className = "el-loading-mask hidden";
 		loaderMask.innerHTML = `<div class="har-loader">
@@ -164,11 +206,16 @@ export default {
 			isPlaying: false,
 			isWindowSizeSmall: false,
 			canPlay: false,
+			lyrics: "",
+			lyricsClass: "lyrics",
+			sameMusic: false,
+			gettingLyrics: false,
 		};
 	},
 	watch: {
 		async name() {
 			document.querySelector(".el-loading-mask.hidden").className = "el-loading-mask";
+			this.sameMusic = false;
 			this.canPlay = false;
 			setTimeout(() => {
 				this.canPlay = true;
@@ -182,6 +229,7 @@ export default {
 			this.musicAudio.volume = this.volume / 100;
 			this.musicAudio.play();
 			this.musicAudio.onended = () => {
+				this.sameMusic = false;
 				this.stopBar();
 				this.isPlaying = false;
 				if (this.playlist.length > 0 && this.currentMusic <= this.playlist.length) {
@@ -212,6 +260,9 @@ export default {
 		openVideoUrl() {
 			require("electron").shell.openExternal(this.link);
 		},
+		openLyricsUrl(url) {
+			require("electron").shell.openExternal(url);
+		},
 		previousMusic() {
 			this.$emit("previousMusic");
 			this.currentDuration = 0;
@@ -224,6 +275,36 @@ export default {
 			this.verifyMusicDuration = setInterval(() => {
 				this.currentDuration = this.musicAudio.currentTime;
 			}, 1000);
+		},
+		mute() {
+			if (this.volume <= 0) {
+				this.volume = 10;
+			} else {
+				this.volume = 0;
+			}
+		},
+		async getLyrics() {
+			this.gettingLyrics = true;
+			if (!this.sameMusic) {
+				this.sameMusic = true;
+				this.lyrics = await lyrics(this.name);
+				if (this.lyrics === "No Lyrics Found.") {
+					this.lyrics = `<strong>Não encontrei a letra :(, tente aqui: <button id="goToLyrics">google</button></strong>`;
+					setTimeout(() => {
+						document.getElementById("goToLyrics").addEventListener(
+							"click",
+							() => {
+								this.openLyricsUrl(
+									`https://www.google.com/search?q=letra+m%C3%BAsica+${this.name}`
+								);
+							},
+							500
+						);
+					});
+				}
+			}
+			this.gettingLyrics = false;
+			this.lyricsClass = "lyrics active";
 		},
 		async pausePlayMusic() {
 			if (this.musicAudio.paused) {
@@ -276,7 +357,7 @@ export default {
 	grid-template-rows: auto;
 	grid-column-gap: 0px;
 	grid-row-gap: 0px;
-	z-index: 2;
+	/* z-index: 5; */
 }
 
 .track-container {
@@ -413,5 +494,50 @@ export default {
 }
 .link2:hover {
 	text-decoration: underline;
+}
+
+.lyrics {
+	transition: all 1s;
+	position: fixed;
+	top: 101%;
+	left: 0%;
+	background-color: #fff;
+	color: black;
+	min-width: 99%;
+	max-width: 99%;
+	min-height: 38vw;
+	max-height: 38vw;
+	z-index: -5;
+	padding: 40px;
+	overflow: scroll;
+}
+
+.lyrics.active {
+	transition: all 1s;
+	top: 25px;
+}
+.getLyrics {
+	transition: all 0.4s;
+	color: #fff;
+}
+.getLyrics:hover {
+	transition: all 0.6s;
+	color: #f56c6c;
+	cursor: pointer;
+}
+.loading {
+	animation: load 1s infinite;
+}
+@keyframes load {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.el-popover--plain {
+	z-index: 129491235492493592349623946 !important;
 }
 </style>

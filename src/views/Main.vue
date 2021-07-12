@@ -328,16 +328,24 @@ export default {
 			require("electron").shell.openExternal(url);
 		},
 		async search() {
-			const loading = this.$loading({
-				lock: false,
-				text: "Buscando Vídeos",
-				spinner: "bx bx-loader-alt loading",
-				background: "rgba(0, 0, 0, 0.7)",
-			});
-			this.loading = true;
-			this.ytSearchResults = (await this.ytSearcher.search(this.args)).items;
-			loading.close();
-			this.loading = false;
+			if (this.args.length > 0) {
+				const loading = this.$loading({
+					lock: false,
+					text: "Buscando Vídeos",
+					spinner: "bx bx-loader-alt loading",
+					background: "rgba(0, 0, 0, 0.7)",
+				});
+				this.loading = true;
+				this.ytSearchResults = (await this.ytSearcher.search(this.args)).items;
+				loading.close();
+				this.loading = false;
+			} else {
+				this.$message({
+					dangerouslyUseHTMLString: true,
+					showClose: true,
+					message: "A pesquisa <strong style='color: red'>não</strong> pode estar vazia!",
+				});
+			}
 		},
 		changeCurrentMusic(videoIndex, isPlaylist = false, rawMusic = false) {
 			let chosenVideo = null;
@@ -366,7 +374,6 @@ export default {
 			}
 
 			if (okToContinue) {
-				console.log(chosenVideo);
 				this.music = {
 					name: chosenVideo.title,
 					channel: chosenVideo.author.name,
@@ -387,7 +394,6 @@ export default {
 			}
 		},
 		nextMusic() {
-			console.log("change music");
 			const okToContinue = this.changeCurrentMusic(this.currentMusic + 1, true);
 			if (okToContinue) {
 				this.currentMusic = this.currentMusic + 1;
@@ -438,7 +444,6 @@ export default {
 		},
 		removeFromPlaylist(videoIndex, literallyAPlaylist = false) {
 			if (literallyAPlaylist) {
-				console.log(this.playlists[videoIndex[0]]);
 				this.playlists[videoIndex[0]].musics.splice(videoIndex[1], 1);
 				fs.writeFileSync("musics/playlists.json", JSON.stringify(this.playlists));
 			} else {
@@ -471,7 +476,6 @@ export default {
 			}).pipe((file = fs.createWriteStream(path)));
 			file.on("finish", () => {
 				loading.close();
-				console.log("Downloaded");
 			});
 		},
 	},
@@ -509,6 +513,8 @@ export default {
 	bottom: 0%;
 	width: 100%;
 	min-height: 100px;
+	background-color: #121212;
+	z-index: 99999;
 }
 
 .loading {
