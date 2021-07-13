@@ -30,6 +30,7 @@ body {
 	background-color: #191819;
 	padding: 0 !important;
 	margin: 0 !important;
+	overflow-x: hidden;
 }
 
 #app {
@@ -65,6 +66,20 @@ body {
 .transition-fade-enter, .transition-fade-leave-to
 /* .slide-fade-leave-active below version 2.1.8 */ {
 	transform: translateX(10px);
+	opacity: 0;
+}
+
+.slide-fade-enter-active {
+	transition: all 0.2s ease-out;
+}
+
+.slide-fade-leave-active {
+	transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+	transform: translateX(20px);
 	opacity: 0;
 }
 </style>

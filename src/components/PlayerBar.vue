@@ -43,6 +43,7 @@
 						:disabled="duration.length > 0 ? false : true"
 						size="mini"
 						icon="bx bx-shuffle"
+						@click="$emit('shufflePlaylist')"
 						circle
 					></el-button>
 					<el-button
@@ -82,9 +83,10 @@
 					v-if="duration.length > 0"
 					style="display: flex; flex-direction: row; margin: auto"
 				>
-					<div>{{ toMinSecTime(currentDuration) }}</div>
+					<div>{{ toMinSecTime(currentDuration) }}&nbsp;</div>
 					<input
 						style="width: 200px"
+						class="range main"
 						type="range"
 						@change="changeCurrentDuration()"
 						@mousedown="stopBar()"
@@ -95,50 +97,67 @@
 						:min="0"
 						:minlength="0"
 					/>
-					<div>{{ fixedDuration }}</div>
+					<div>&nbsp;{{ fixedDuration }}</div>
 				</div>
 			</div>
 		</div>
-		<div class="volume">
-			<div style="width: 100%; text-align: right; margin-right: 10px">
-				<el-popover
-					v-if="this.name.length > 0"
-					placement="top-start"
-					:width="10"
-					trigger="hover"
-					content="Ver a letra"
-				>
-					<template #reference>
-						<i
-							:class="
-								gettingLyrics
-									? 'bx bx-loader-alt getLyrics loading'
-									: 'bx bxs-microphone getLyrics'
-							"
-							@click="getLyrics()"
-						></i>
-					</template> </el-popover
-				>&nbsp;
-				<i
-					@click="mute()"
-					style="cursor: pointer"
-					v-if="volume >= 50"
-					class="bx bxs-volume-full"
-				></i>
-				<i
-					@click="mute()"
-					style="cursor: pointer"
-					v-else-if="volume >= 30 && volume <= 49"
-					class="bx bxs-volume-low"
-				></i>
-				<i
-					@click="mute()"
-					style="cursor: pointer"
-					v-else-if="volume > 0 && volume <= 29"
-					class="bx bxs-volume"
-				></i>
-				<i @click="mute()" style="cursor: pointer" v-else class="bx bxs-volume-mute"></i>
-				<input v-model="volume" type="range" />
+		<div
+			class="volume"
+			style="width: 100%; text-align: right; display: flex; flex-direction: row; margin-left: auto !important;"
+		>
+			<div style="width: 100%; display: flex; flex-direction: row;">
+				<div style="margin-left: auto !important;">
+					<el-popover
+						v-if="this.name.length > 0"
+						placement="top-start"
+						:width="10"
+						trigger="hover"
+						content="Ver a letra"
+						style="margin-left: auto !important;"
+					>
+						<template #reference>
+							<i
+								:class="
+									gettingLyrics
+										? 'bx bx-loader-alt getLyrics loading'
+										: 'bx bxs-microphone getLyrics'
+								"
+								style="margin-left: auto !important;"
+								@click="getLyrics()"
+							></i>
+						</template> </el-popover
+					>&nbsp;
+					<i
+						@click="mute()"
+						style="cursor: pointer; margin-left: auto !important;"
+						v-if="volume >= 50"
+						class="bx bxs-volume-full"
+					></i>
+					<i
+						@click="mute()"
+						style="cursor: pointer; margin-left: auto !important;"
+						v-else-if="volume >= 30 && volume <= 49"
+						class="bx bxs-volume-low"
+					></i>
+					<i
+						@click="mute()"
+						style="cursor: pointer; margin-left: auto !important;"
+						v-else-if="volume > 0 && volume <= 29"
+						class="bx bxs-volume"
+					></i>
+					<i
+						@click="mute()"
+						style="cursor: pointer; margin-left: auto !important;"
+						v-else
+						class="bx bxs-volume-mute"
+					></i>
+				</div>
+				<input
+					v-model="volume"
+					style="margin-right: 10px"
+					type="range"
+					class="range volume secondary"
+				/>
 			</div>
 		</div>
 		<div :class="lyricsClass">
@@ -149,7 +168,8 @@
 			>
 			</el-page-header>
 			<div>
-				<p v-html="lyrics"></p>
+				<pre v-if="Number(lyrics[1]) === 1" v-html="lyrics[0]"></pre>
+				<p v-else v-html="lyrics[0]"></p>
 			</div>
 		</div>
 	</div>
@@ -237,6 +257,12 @@ export default {
 					this.continueBar();
 					this.$emit("musicFinished");
 				}
+			};
+			this.musicAudio.onpause = () => {
+				this.isPlaying = false;
+			};
+			this.musicAudio.onplay = () => {
+				this.isPlaying = true;
 			};
 			this.isPlaying = true;
 			this.durationInSeconds = 0;
@@ -505,11 +531,30 @@ export default {
 	color: black;
 	min-width: 99%;
 	max-width: 99%;
-	min-height: 38vw;
-	max-height: 38vw;
+	min-height: 70vh;
+	max-height: 70vh;
 	z-index: -5;
 	padding: 40px;
 	overflow: scroll;
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidenav (less padding and a smaller font size) */
+@media screen and (max-height: 1080px) {
+	.lyrics {
+		transition: all 1s;
+		position: fixed;
+		top: 101%;
+		left: 0%;
+		background-color: #fff;
+		color: black;
+		min-width: 99%;
+		max-width: 99%;
+		min-height: 75vh;
+		max-height: 75vh;
+		z-index: -5;
+		padding: 40px;
+		overflow: scroll;
+	}
 }
 
 .lyrics.active {
@@ -539,5 +584,141 @@ export default {
 
 .el-popover--plain {
 	z-index: 129491235492493592349623946 !important;
+}
+
+.range {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	position: relative;
+	/* left: 50%;
+	top: 50%;
+	width: 200px;
+	margin-top: 10px;
+	transform: translate(-50%, -50%); */
+	background-color: transparent;
+}
+
+.range.volume {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	position: relative;
+	/* left: 50%;
+	top: 50%;
+	width: 200px;
+	margin-top: 10px;
+	transform: translate(-50%, -50%); */
+	background-color: transparent;
+	margin-bottom: 5px !important;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+	-webkit-appearance: none;
+	background: #f56c6c;
+	background: -moz-linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	background: -webkit-gradient(
+		left bottom,
+		right top,
+		color-stop(0%, #f56c6c),
+		color-stop(25%, #fb3c37),
+		color-stop(51%, #fb3c37),
+		color-stop(100%, #f56c6c)
+	);
+	background: -webkit-linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	background: -o-linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	background: -ms-linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	background: linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#3bade3 ', endColorstr='#ff357f ', GradientType=1 );
+	height: 2px;
+}
+
+input[type="range"]:focus {
+	outline: none;
+}
+
+input[type="range"]::-moz-range-track {
+	-moz-appearance: none;
+	background: #f56c6c;
+	background: -moz-linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	background: -webkit-gradient(
+		left bottom,
+		right top,
+		color-stop(0%, #f56c6c),
+		color-stop(25%, #fb3c37),
+		color-stop(51%, #fb3c37),
+		color-stop(100%, #f56c6c)
+	);
+	background: -webkit-linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	background: -o-linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	background: -ms-linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	background: linear-gradient(45deg, #f56c6c 0%, #fb3c37 25%, #fb3c37 51%, #f56c6c 100%);
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#3bade3 ', endColorstr='#ff357f ', GradientType=1 );
+	height: 2px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	border: 2px solid;
+	border-radius: 50%;
+	height: 20px;
+	width: 20px;
+	max-width: 80px;
+	position: relative;
+	bottom: 9px;
+	background-color: #1d1c25;
+	cursor: -webkit-grab;
+
+	-webkit-transition: border 1000ms ease;
+	transition: border 1000ms ease;
+}
+
+input[type="range"].volume::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	border: 2px solid;
+	border-radius: 50%;
+	height: 20px;
+	width: 20px;
+	max-width: 80px;
+	position: relative;
+	bottom: 9px;
+	background-color: #fff;
+	cursor: -webkit-grab;
+
+	-webkit-transition: border 1000ms ease;
+	transition: border 1000ms ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+	-moz-appearance: none;
+	border: 2px solid;
+	border-radius: 50%;
+	height: 25px;
+	width: 25px;
+	max-width: 80px;
+	position: relative;
+	bottom: 11px;
+	background-color: #1d1c25;
+	cursor: -moz-grab;
+	-moz-transition: border 1000ms ease;
+	transition: border 1000ms ease;
+}
+
+.range.main::-webkit-slider-thumb {
+	border-color: #f56c6c;
+}
+
+.range.secondary::-webkit-slider-thumb {
+	border-color: #f79898;
+}
+
+.range.volume.secondary::-webkit-slider-thumb {
+	border-color: #f79898;
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+	cursor: -webkit-grabbing;
+}
+
+input[type="range"]::-moz-range-thumb:active {
+	cursor: -moz-grabbing;
 }
 </style>

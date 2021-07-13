@@ -13,13 +13,18 @@ export default async function(name) {
 
 		let lyrics = lyricsRawPage.split(divider1)[1];
 		lyrics = lyrics.split(divider2)[0];
-		return lyrics;
+		lyrics = lyrics.replaceAll("<a", "<span");
+		lyrics = lyrics.replaceAll("</a", "</span");
+		return [lyrics, 0];
 	} catch (err) {
 		try {
 			const ipcRenderer = require("electron").ipcRenderer;
-			return await ipcRenderer.invoke("getLyrics", {
-				title: name,
-			});
+			return [
+				await ipcRenderer.invoke("getLyrics", {
+					title: name,
+				}),
+				1,
+			];
 		} catch (err2) {
 			console.log(err2);
 		}

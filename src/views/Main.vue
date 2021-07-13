@@ -23,230 +23,218 @@
 				</el-menu-item>
 			</el-menu>
 		</div>
-		<!-- MAIN-PAGE -->
-		<div class="content" v-if="page === 'main'">
-			<el-button
-				v-if="navWidth === '0'"
-				@click="openNav()"
-				type="text"
-				style="position: fixed; top: 5%; right: 2.5%; z-index: 999;"
-				><i class="bx bxs-playlist el-icon--right"></i
-			></el-button>
-			<div :style="`width: ${navWidth}`" class="sidenav">
-				<a href="javascript:void(0)" class="closebtn" @click="closeNav()">&times;</a>
-				<span style="font-size: larger;"
-					><i class="bx bxs-playlist el-icon--right"></i> Lista de Reprodução</span
-				>
-				<el-row
-					v-for="(music, i) in playlist"
-					:key="i"
-					:gutter="20"
-					style="margin-bottom: 5px !important; margin-top: 20px !important; vertical-align: middle;"
-				>
-					<table style="width: 100%; margin-left: 15px; margin-right: 15px">
-						<td>{{ `${String(music.title).substring(0, 40)}...` }}</td>
-						<td style="text-align: right">
-							<el-button
-								type="text"
-								style="color: red"
-								icon="el-icon-delete"
-								circle
-								@click="removeFromPlaylist(i)"
-							></el-button>
-						</td>
-					</table>
-				</el-row>
-			</div>
-			<!-- <el-dropdown
-				v-if="playlist.length > 0"
-				style="position: fixed; top: 5%; right: 2.5%; z-index: 999;"
-			>
-				<el-button type="text" style="color: #F56C6C"
+		<transition name="slide-fade">
+			<!-- MAIN-PAGE -->
+			<div class="content" v-if="page === 'main'">
+				<el-button
+					v-if="navWidth === '0' && playlist.length > 0"
+					@click="openNav()"
+					type="text"
+					style="position: fixed; top: 5%; right: 2.5%; z-index: 1; color: #f56c6c"
 					><i class="bx bxs-playlist el-icon--right"></i
 				></el-button>
-				<template #dropdown>
-					<el-dropdown-menu>
-						<el-dropdown-item v-for="(music, i) in playlist" :key="i">
-							<el-row :gutter="20" style="margin-bottom: 5px !important">
-								<el-col :span="20">{{
-									`${String(music.title).substring(0, 40)}...`
-								}}</el-col>
-								<el-col :span="2">
-									<el-button
-										type="text"
-										style="color: red"
-										icon="el-icon-delete"
-										circle
-										@click="removeFromPlaylist(i)"
-									></el-button>
-								</el-col>
-							</el-row>
-						</el-dropdown-item>
-					</el-dropdown-menu>
-				</template>
-			</el-dropdown> -->
-			<div
-				:class="typeof ytSearchResults[0] === 'undefined' ? 'fullsize-hidden' : ''"
-				style="display: grid; width: 100%; place-items: left; padding-left: 10px; padding-top: 10px; margin-bottom: 20px"
-			>
-				<el-row :gutter="1" style="width: 600px;">
-					<el-col :span="12"
-						><el-input
-							placeholder="Procure aqui"
-							prefix-icon="el-icon-search"
-							v-model="args"
-							@keypress.enter="search()"
-							clearable
-						>
-						</el-input
-					></el-col>
-					<el-col :span="6" style="margin-left: 5px">
-						<el-button
-							class="searchButton grow-rotate box-shadow-outset"
-							@click="search()"
-							icon="el-icon-search"
-							circle
-						></el-button>
-					</el-col>
-				</el-row>
-			</div>
-			<div>
-				<el-container
-					v-for="(video, i) in ytSearchResults"
-					:key="i"
-					style="padding: 0 !important"
+				<div :style="`width: ${navWidth}`" :class="sidenav">
+					<a href="javascript:void(0)" class="closebtn" @click="closeNav()">&times;</a>
+					<span style="font-size: larger; margin-left: 20px"
+						><i class="bx bxs-playlist el-icon--right"></i> Lista de Reprodução</span
+					>
+					<el-row
+						v-for="(playlistMusic, i) in playlist"
+						:key="i"
+						:gutter="20"
+						style="margin-bottom: 5px !important; margin-top: 20px !important; vertical-align: middle;"
+					>
+						<table style="width: 100%; margin-left: 15px; margin-right: 15px">
+							<td>
+								<span
+									v-html="
+										playlistMusic.title === this.music.name
+											? `<strong style='color: #f56c6c'>Tocando agora: </strong>`
+											: ''
+									"
+								></span>
+								{{ `${String(playlistMusic.title).substring(0, 40)}...` }}
+							</td>
+							<td style="text-align: right">
+								<el-button
+									type="text"
+									style="color: red"
+									icon="el-icon-delete"
+									circle
+									@click="removeFromPlaylist(i)"
+								></el-button>
+							</td>
+						</table>
+					</el-row>
+				</div>
+				<div
+					:class="typeof ytSearchResults[0] === 'undefined' ? 'fullsize-hidden' : ''"
+					style="display: grid; width: 100%; place-items: left; padding-left: 10px; padding-top: 10px; margin-bottom: 20px"
 				>
-					<el-aside width="200px">
-						<el-image
-							style="width: 200px; height: auto"
-							:src="video.bestThumbnail.url"
-							fit="cover"
-						></el-image>
-					</el-aside>
-					<el-main
-						><div style="padding: 0 !important; padding-left: 10px">
-							<span>{{ video.title }} | {{ video.duration }}</span>
-							<div class="bottom">
-								<time class="time">{{ video.author.name }}</time
-								><br />
-								<div style="margin-top: 10px">
-									<el-button
-										type="danger"
-										icon="bx bx-play"
-										circle
-										size="mini"
-										@click="changeCurrentMusic(i)"
-									></el-button>
-									<el-popover
-										placement="top-start"
-										:width="200"
-										trigger="hover"
-										content="Adicionar a fila"
-									>
-										<template #reference>
+					<el-row :gutter="1" style="width: 600px;">
+						<el-col :span="12"
+							><el-input
+								placeholder="Procure aqui"
+								prefix-icon="el-icon-search"
+								v-model="args"
+								@keypress.enter="search()"
+								clearable
+							>
+							</el-input
+						></el-col>
+						<el-col :span="6" style="margin-left: 5px">
+							<el-button
+								class="searchButton grow-rotate box-shadow-outset"
+								@click="search()"
+								icon="el-icon-search"
+								circle
+							></el-button>
+						</el-col>
+					</el-row>
+				</div>
+				<div>
+					<el-container
+						v-for="(video, i) in ytSearchResults"
+						:key="i"
+						style="padding: 0 !important"
+					>
+						<el-aside width="200px">
+							<el-image
+								@click="openChannelUrl(video.url)"
+								style="width: 200px; height: auto"
+								:src="video.bestThumbnail.url"
+								fit="cover"
+							></el-image>
+						</el-aside>
+						<el-main
+							><div style="padding: 0 !important; padding-left: 10px; height: 100%">
+								<span @click="openChannelUrl(video.url)"
+									>{{ video.title }} | {{ video.duration }}</span
+								>
+								<div class="bottom">
+									<time class="time" @click="openChannelUrl(video.author.url)">{{
+										video.author.name
+									}}</time
+									><br />
+									<div style="margin-top: 10px">
+										<el-button
+											type="danger"
+											icon="bx bx-play"
+											circle
+											size="mini"
+											@click="changeCurrentMusic(i)"
+										></el-button>
+										<el-popover
+											placement="top-start"
+											:width="200"
+											trigger="hover"
+											content="Adicionar a fila"
+										>
+											<template #reference>
+												<el-button
+													type="text"
+													icon="bx bxs-add-to-queue"
+													circle
+													@click="addToPlaylist(i)"
+												></el-button>
+											</template>
+										</el-popover>
+										<el-dropdown>
 											<el-button
 												type="text"
-												icon="bx bxs-add-to-queue"
+												icon="bx bx-list-plus"
 												circle
-												@click="addToPlaylist(i)"
 											></el-button>
-										</template>
-									</el-popover>
-									<el-dropdown>
+											<template #dropdown style="text-align: center">
+												<el-dropdown-menu>
+													<el-dropdown-item
+														v-for="(playlist, ii) in playlists"
+														:key="ii"
+														@click="addToPlaylist([i, ii], true)"
+														>{{ playlist.name }}</el-dropdown-item
+													>
+													<el-dropdown-item @click="newPlaylist()">
+														<i class="bx bxs-playlist"></i> Criar
+														playlist
+													</el-dropdown-item>
+												</el-dropdown-menu>
+											</template>
+										</el-dropdown>
 										<el-button
 											type="text"
-											icon="bx bx-list-plus"
+											icon="bx bxs-download"
 											circle
+											@click="selectSaveLocation(video.url, video.title)"
 										></el-button>
-										<template #dropdown style="text-align: center">
-											<el-dropdown-menu>
-												<el-dropdown-item
-													v-for="(playlist, ii) in playlists"
-													:key="ii"
-													@click="addToPlaylist([i, ii], true)"
-													>{{ playlist.name }}</el-dropdown-item
-												>
-												<el-dropdown-item @click="newPlaylist()">
-													<i class="bx bxs-playlist"></i> Criar playlist
-												</el-dropdown-item>
-											</el-dropdown-menu>
-										</template>
-									</el-dropdown>
-									<el-button
-										type="text"
-										icon="bx bxs-download"
-										circle
-										@click="selectSaveLocation(video.url, video.title)"
-									></el-button>
-								</div>
-							</div></div
-					></el-main>
-				</el-container>
-			</div>
-		</div>
-		<!-- PLAYLISTS -->
-		<div class="content" v-if="page === 'playlists'">
-			<el-empty
-				v-if="playlists.length < 1"
-				description="Ué, aqui está vazio... Estranho"
-			></el-empty>
-			<div v-else style="display: flex;">
-				<div style="margin: auto">
-					<el-card
-						class="box-card"
-						v-for="(playlist, i) in playlists"
-						:key="i"
-						style="width: 65vw"
-					>
-						<template #header>
-							<div class="card-header" style="display: flex">
-								<span style="margin-right: auto">{{ playlist.name }}</span>
-								<el-button
-									style="margin-left: auto"
-									type="danger"
-									icon="bx bx-play"
-									circle
-									size="mini"
-									@click="playPlaylist(i)"
-								></el-button>
-							</div>
-						</template>
-						<div v-for="(music, ii) in playlist.musics" :key="ii" class="text item">
-							<el-row :gutter="20">
-								<el-col :span="18"
-									><div class="grid-content">
-										<el-button
-											class="playlistName"
-											type="text"
-											icon="bx bxs-music"
-											circle
-											size="medium"
-											@click="openChannelUrl(music.url)"
-											>{{
-												isWindowSizeSmall
-													? `${music.title.substring(0, 50)}...`
-													: music.title
-											}}</el-button
-										>
-									</div></el-col
-								>
-								<el-col :span="6" style="text-align: right"
-									><div class="grid-content">
-										<el-button
-											class="playlistDelete"
-											type="text"
-											icon="bx bxs-trash"
-											circle
-											size="medium"
-											@click="removeFromPlaylist([i, ii], true)"
-										></el-button></div
-								></el-col>
-							</el-row>
-						</div>
-					</el-card>
+									</div>
+								</div></div
+						></el-main>
+					</el-container>
 				</div>
 			</div>
-		</div>
+		</transition>
+		<transition name="slide-fade">
+			<!-- PLAYLISTS -->
+			<div class="content" v-if="page === 'playlists'">
+				<el-empty
+					v-if="playlists.length < 1"
+					description="Ué, aqui está vazio... Estranho"
+				></el-empty>
+				<div v-else style="display: flex;">
+					<el-collapse style="width: 100%; margin-left: 20px; margin-right: 20px">
+						<el-collapse-item
+							v-for="(playlist, i) in playlists"
+							:key="i"
+							:title="`&nbsp;&nbsp;&nbsp;&nbsp;${playlist.name}`"
+						>
+							<el-button
+								style="margin-left: 20px"
+								type="danger"
+								icon="bx bx-play"
+								circle
+								size="medium"
+								@click="playPlaylist(i)"
+							></el-button>
+							<el-button
+								style="margin-left: 20px; color: #f56c6c !important"
+								icon="bx bxs-trash-alt"
+								class="playlistName"
+								circle
+								size="medium"
+								@click="playPlaylist(i)"
+							></el-button>
+							<hr />
+							<div
+								style="padding-left: 20px"
+								v-for="(music, ii) in playlist.musics"
+								:key="ii"
+								:name="ii"
+							>
+								<el-button
+									class="playlistDelete"
+									type="text"
+									icon="bx bxs-trash"
+									circle
+									size="medium"
+									@click="removeFromPlaylist([i, ii], true)"
+								></el-button
+								><el-button
+									class="playlistName"
+									type="text"
+									size="medium"
+									@click="openChannelUrl(music.url)"
+									>{{
+										isWindowSizeSmall
+											? `${music.title.substring(0, 50)}...`
+											: music.title
+									}}</el-button
+								>
+							</div>
+						</el-collapse-item>
+					</el-collapse>
+				</div>
+			</div>
+		</transition>
 		<div class="player" style="background-color: whitesmoke">
 			<player-bar
 				:name="music.name"
@@ -259,6 +247,7 @@
 				@musicFinished="nextMusic()"
 				@nextMusic="nextMusic()"
 				@previousMusic="previousMusic()"
+				@shufflePlaylist="shufflePlaylist()"
 			/>
 		</div>
 	</div>
@@ -294,6 +283,7 @@ export default {
 			currentMusic: 0,
 			isWindowSizeSmall: false,
 			navWidth: "0",
+			sidenav: "sidenav",
 		};
 	},
 	async mounted() {
@@ -311,11 +301,23 @@ export default {
 	},
 	methods: {
 		openNav() {
-			this.navWidth = "400px";
+			this.sidenav = "sidenav hiddennav";
+			setTimeout(() => {
+				this.navWidth = "400px";
+				setTimeout(() => {
+					this.sidenav = "sidenav";
+				}, 400);
+			}, 200);
 		},
 
 		closeNav() {
-			this.navWidth = "0";
+			this.sidenav = "sidenav hiddennav";
+			setTimeout(() => {
+				this.navWidth = "0";
+				setTimeout(() => {
+					this.sidenav = "sidenav";
+				}, 1000);
+			}, 50);
 		},
 		manageWordSize() {
 			if (window.innerWidth < 1000) {
@@ -345,6 +347,7 @@ export default {
 					showClose: true,
 					message: "A pesquisa <strong style='color: red'>não</strong> pode estar vazia!",
 				});
+				this.ytSearchResults = [];
 			}
 		},
 		changeCurrentMusic(videoIndex, isPlaylist = false, rawMusic = false) {
@@ -385,6 +388,52 @@ export default {
 				return true;
 			} else {
 				return false;
+			}
+		},
+		shuffle(array) {
+			var currentIndex = array.length,
+				randomIndex;
+
+			// While there remain elements to shuffle...
+			while (0 !== currentIndex) {
+				// Pick a remaining element...
+				randomIndex = Math.floor(Math.random() * currentIndex);
+				currentIndex--;
+
+				// And swap it with the current element.
+				[array[currentIndex], array[randomIndex]] = [
+					array[randomIndex],
+					array[currentIndex],
+				];
+			}
+
+			return array;
+		},
+		shufflePlaylist() {
+			if (localStorage.shuffleAgreed) {
+				this.playlist = this.shuffle(this.playlist);
+			} else {
+				this.$confirm(
+					"Esta função irá embaralhar TODAS as músicas, não há voltas!",
+					"Atenção, este botão não funciona como o padrão conhecido",
+					{
+						confirmButtonText: "OK",
+						cancelButtonText: "Cancelar",
+						type: "info",
+					}
+				)
+					.then(() => {
+						localStorage.shuffleAgreed = true;
+						this.playlist = this.shuffle(this.playlist);
+					})
+					.catch(() => {
+						localStorage.shuffleAgreed = true;
+						this.playlist = this.shuffle(this.playlist);
+						this.$message({
+							type: "info",
+							message: "Embaralhar cancelado!",
+						});
+					});
 			}
 		},
 		previousMusic() {
@@ -431,6 +480,10 @@ export default {
 				try {
 					this.playlists[videoIndex[1]].musics.push(this.ytSearchResults[videoIndex[0]]);
 					fs.writeFileSync("musics/playlists.json", JSON.stringify(this.playlists));
+					this.$message({
+						type: "success",
+						message: "Adicionado com sucesso",
+					});
 				} catch (err) {
 					this.$message({
 						type: "error",
@@ -484,6 +537,16 @@ export default {
 </script>
 
 <style>
+.el-container {
+	max-height: 125px;
+	margin-bottom: 20px;
+}
+
+.el-main {
+	padding: 0 !important;
+	height: 100%;
+}
+
 .container {
 	display: grid;
 	grid-template-areas:
@@ -635,18 +698,27 @@ export default {
 	color: red !important;
 }
 
+.sidenav.hiddennav * {
+	opacity: 0;
+}
+
 /* The side navigation menu */
 .sidenav {
-	height: 100%; /* 100% Full-height */
+	transition: opacity 1s;
+	opacity: 1;
+	height: 74.5%; /* 100% Full-height */
+	max-height: 74.5%;
 	width: 0; /* 0 width - change this with JavaScript */
 	position: fixed; /* Stay in place */
 	top: 0; /* Stay at the top */
 	right: 0;
 	background-color: #121212; /* Black*/
 	overflow-x: hidden; /* Disable horizontal scroll */
+	overflow-y: scroll;
 	padding-top: 60px; /* Place content 60px from the top */
 	transition: 0.5s; /* 0.5 second transition effect to slide in the sidenav */
 	z-index: 1;
+	padding-top: 50px !important;
 }
 
 /* The navigation menu links */
@@ -674,12 +746,18 @@ export default {
 }
 
 /* On smaller screens, where height is less than 450px, change the style of the sidenav (less padding and a smaller font size) */
-@media screen and (max-height: 450px) {
+@media screen and (max-height: 800px) {
 	.sidenav {
 		padding-top: 15px;
+		height: 77.5%; /* 100% Full-height */
+		max-height: 77.5%;
 	}
 	.sidenav a {
 		font-size: 18px;
 	}
+}
+
+.el-collapse-item__header {
+	font-size: x-large !important;
 }
 </style>

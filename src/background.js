@@ -71,6 +71,7 @@ app.on("ready", async () => {
 		width: 300,
 		height: 300,
 		frame: false,
+		thickFrame: false,
 		resizable: false,
 		center: true,
 		darkTheme: true,
@@ -78,6 +79,7 @@ app.on("ready", async () => {
 		minimizable: false,
 		movable: false,
 		backgroundColor: "#121212",
+		closable: true,
 	});
 	load.webContents.on("devtools-opened", () => {
 		load.webContents.closeDevTools();
@@ -193,7 +195,7 @@ ipcMain.handle("getLyrics", async (event, args) => {
 	}
 
 	const lyrics = await parse(args.title);
-	return lyrics ? lyrics : "No Lyrics Found.";
+	return lyrics ? lyrics : "Nenhuma letra encontrada.";
 });
 
 // Exit cleanly on request from parent process in development mode.
