@@ -1,6 +1,6 @@
 <template>
 	<div class="PlayerBar" v-loading="true" element-loading-text=" ">
-		<audio ref="musicPlayer" :src="musicUrl"></audio>
+		<audio id="music" preload="none" ref="musicPlayer" :src="musicUrl"></audio>
 		<div class="track-container">
 			<div style="width: 99%; height: 100px; display: grid; place-items: center">
 				<!-- <img  style="height: 80px; width: 80px" /> -->
@@ -83,7 +83,7 @@
 					v-if="duration.length > 0"
 					style="display: flex; flex-direction: row; margin: auto"
 				>
-					<div>{{ toMinSecTime(currentDuration) }}&nbsp;</div>
+					<div v-html="toTime(currentDuration) + '&nbsp;'"></div>
 					<input
 						style="width: 200px"
 						class="range main"
@@ -211,6 +211,7 @@ export default {
 		this.verifyMusicDuration = setInterval(() => {
 			this.currentDuration = this.musicAudio.currentTime;
 		}, 1000);
+		this.musicAudio.preload = false;
 	},
 	data() {
 		return {
@@ -245,7 +246,8 @@ export default {
 				this.musicAudio.pause();
 			}
 			const returnedUrl = await this.ytDownloader.download(this.link, this.name);
-			this.musicAudio = new Audio(returnedUrl);
+			this.musicAudio = document.querySelector("#music");
+			this.musicAudio.src = returnedUrl;
 			this.musicAudio.volume = this.volume / 100;
 			this.musicAudio.play();
 			this.musicAudio.onended = () => {
@@ -355,7 +357,16 @@ export default {
 		},
 		convertDuration() {
 			let durationSplitted = this.duration.split(":");
-			durationSplitted = Number(durationSplitted[0]) * 60 + Number(durationSplitted[1]);
+
+			if (this.duration.match(new RegExp("str", "g")) || [].length > 1) {
+				durationSplitted = Number(durationSplitted[0]) * 60 + Number(durationSplitted[1]);
+			} else {
+				durationSplitted =
+					Number(durationSplitted[0]) * 3600 +
+					Number(durationSplitted[1]) * 60 +
+					Number(durationSplitted[2]);
+			}
+
 			this.durationInSeconds = durationSplitted;
 			if (this.duration.length === 4) {
 				this.fixedDuration = `0${this.duration}`;
@@ -363,11 +374,29 @@ export default {
 				this.fixedDuration = this.duration;
 			}
 		},
-		toMinSecTime(time) {
-			var mins = ~~((time % 3600) / 60);
-			var secs = ~~time % 60;
-			var ret = "";
-			ret += (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "");
+		toTime(time) {
+			console.log(time);
+			let hours = time > 3600 ? ~~(time / 3600) : 0;
+			let mins = ~~((time % 3600) / 60);
+			let secs = ~~time % 60;
+			let ret = "";
+			if (hours > 0) {
+				ret +=
+					(hours < 0 ? "0" : "") +
+					hours +
+					":" +
+					(mins < 10 ? "0" : "") +
+					mins +
+					":" +
+					(secs < 10 ? "0" : "");
+			} else {
+				ret +=
+					"&nbsp;&nbsp;&nbsp;&nbsp;" +
+					(mins < 10 ? "0" : "") +
+					mins +
+					":" +
+					(secs < 10 ? "0" : "");
+			}
 			ret += "" + secs;
 			return ret;
 		},
