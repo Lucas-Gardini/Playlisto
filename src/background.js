@@ -1,22 +1,39 @@
 "use strict";
 import { app, protocol, BrowserWindow, ipcMain, dialog } from "electron";
+import express from "express";
 const fetch = require("electron-fetch").default;
 import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
 const isDevelopment = process.env.NODE_ENV !== "production";
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
-	{ scheme: "app", privileges: { secure: true, standard: true } },
+	{
+		scheme: "app",
+		privileges: {
+			secure: true,
+			standard: true,
+			corsEnabled: true,
+			supportFetchAPI: false,
+			stream: false,
+			bypassCSP: false,
+			allowServiceWorkers: false,
+		},
+	},
 ]);
 
 var main;
 
 async function createWindow() {
+	const expressApplication = express();
+	expressApplication.use("/", express.static("./resources/app"));
+	expressApplication.listen(7089);
+
 	// Create the browser window.
 	const win = new BrowserWindow({
 		titleBarStyle: "hidden",
 		width: 800,
 		height: 600,
 		minWidth: 760,
+		minHeight: 460,
 		webPreferences: {
 			// Use pluginOptions.nodeIntegration, leave this alone
 			// See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
@@ -33,9 +50,9 @@ async function createWindow() {
 		// Load the url of the dev server if in development mode
 		await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL);
 	} else {
-		createProtocol("app");
+		// createProtocol("app");
 		// Load the index.html when not in development
-		win.loadURL("app://./index.html");
+		win.loadURL("http://localhost:7089");
 	}
 
 	main = win;

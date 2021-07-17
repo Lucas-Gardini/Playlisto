@@ -1,5 +1,6 @@
 <template>
 	<div class="PlayerBar" v-loading="true" element-loading-text=" ">
+		<div id="player"></div>
 		<audio id="music" preload="none" ref="musicPlayer" :src="musicUrl"></audio>
 		<div class="track-container">
 			<div style="width: 99%; height: 100px; display: grid; place-items: center">
@@ -97,7 +98,7 @@
 						:min="0"
 						:minlength="0"
 					/>
-					<div>&nbsp;{{ fixedDuration }}</div>
+					<div v-html="toTime(durationInSeconds, true) + '&nbsp;'"></div>
 				</div>
 			</div>
 		</div>
@@ -178,6 +179,7 @@
 <script>
 import { youtubeDownloader } from "../utils/ytdl";
 import lyrics from "../utils/lyrics";
+import YTIframe from "youtube-iframe";
 
 export default {
 	props: {
@@ -190,6 +192,11 @@ export default {
 		playlist: Array,
 	},
 	mounted() {
+		try {
+			document.querySelector("#www-widgetapi-script").src = "";
+		} catch (err) {
+			err;
+		}
 		const loaderMask = document.querySelector(".el-loading-mask");
 		loaderMask.className = "el-loading-mask hidden";
 		loaderMask.innerHTML = `<div class="har-loader">
@@ -208,14 +215,13 @@ export default {
 		this.ytDownloader.deleteMusics();
 		this.manageWordSize();
 		window.addEventListener("resize", this.manageWordSize);
-		this.verifyMusicDuration = setInterval(() => {
-			this.currentDuration = this.musicAudio.currentTime;
-		}, 1000);
 		this.musicAudio.preload = false;
+		this.volume = localStorage.volume;
 	},
 	data() {
 		return {
 			ytDownloader: new youtubeDownloader(),
+			ytIframe: null,
 			musicUrl: "",
 			musicAudio: new Audio(),
 			volume: Number(localStorage.volume) || 100,
@@ -235,53 +241,115 @@ export default {
 	},
 	watch: {
 		async name() {
-			document.querySelector(".el-loading-mask.hidden").className = "el-loading-mask";
-			this.sameMusic = false;
-			this.canPlay = false;
-			setTimeout(() => {
-				this.canPlay = true;
-			}, 800);
-			this.musicUrl = "";
-			if (this.musicAudio !== null) {
-				this.musicAudio.pause();
+			if (this.ytIframe !== null) {
+				this.ytIframe.destroy();
 			}
-			const returnedUrl = await this.ytDownloader.download(this.link, this.name);
-			this.musicAudio = document.querySelector("#music");
-			this.musicAudio.src = returnedUrl;
-			this.musicAudio.volume = this.volume / 100;
-			this.musicAudio.play();
-			this.musicAudio.onended = () => {
-				this.sameMusic = false;
-				this.stopBar();
-				this.isPlaying = false;
-				if (this.playlist.length > 0 && this.currentMusic <= this.playlist.length) {
-					this.isPlaying = true;
-					this.continueBar();
-					this.$emit("musicFinished");
-				}
-			};
-			this.musicAudio.onpause = () => {
-				this.isPlaying = false;
-			};
-			this.musicAudio.onplay = () => {
-				this.isPlaying = true;
-			};
-			this.isPlaying = true;
-			this.durationInSeconds = 0;
-			this.fixedDuration = "";
-			this.currentDuration = this.musicAudio.currentTime;
-			this.convertDuration();
-			document.querySelector(".el-loading-mask").className = "el-loading-mask hidden";
+
+			console.log(this.link, this.link.split("?v=")[1]);
+			this.ytIframe = YTIframe.load((YT) => {
+				const player = new YT.Player("player", {
+					height: "390",
+					width: "640",
+					videoId: this.link.split("?v=")[1],
+					events: {
+						onReady: this.onPlayerReady,
+						onStateChange: this.onPlayerStateChange,
+					},
+					playerVars: {
+						autoplay: 1,
+						controls: 1,
+						autohide: 1,
+						wmode: "opaque",
+						origin: window.location.origin,
+					},
+				});
+				this.canPlay = true;
+				this.ytIframe = player;
+			});
+
+			this.continueBar();
+
+			// document.querySelector(".el-loading-mask.hidden").className = "el-loading-mask";
+			// this.sameMusic = false;
+			// this.canPlay = false;
+			// setTimeout(() => {
+			// 	this.canPlay = true;
+			// }, 800);
+			// this.musicUrl = "";
+			// if (this.musicAudio !== null) {
+			// 	this.musicAudio.pause();
+			// }
+			// const returnedUrl = await this.ytDownloader.download(this.link, this.name);
+			// this.musicAudio = document.querySelector("#music");
+			// this.musicAudio.src = returnedUrl;
+			// this.musicAudio.volume = this.volume / 100;
+			// this.musicAudio.play();
+			// this.musicAudio.onended = () => {
+			// 	this.sameMusic = false;
+			// 	this.stopBar();
+			// 	this.isPlaying = false;
+			// 	if (this.playlist.length > 0 && this.currentMusic <= this.playlist.length) {
+			// 		this.isPlaying = true;
+			// 		this.continueBar();
+			// 		this.$emit("musicFinished");
+			// 	}
+			// };
+			// this.musicAudio.onpause = () => {
+			// 	this.isPlaying = false;
+			// };
+			// this.musicAudio.onplay = () => {
+			// 	this.isPlaying = true;
+			// };
+			// this.isPlaying = true;
+			// this.durationInSeconds = 0;
+			// this.fixedDuration = "";
+			// this.currentDuration = this.musicAudio.currentTime;
+			// this.convertDuration();
+			// document.querySelector(".el-loading-mask").className = "el-loading-mask hidden";
 		},
 		async playlist() {
 			console.log("Playlist changed");
 		},
 		volume() {
 			this.musicAudio.volume = this.volume / 100;
-			localStorage.volume = this.volume;
+			localStorage.volume = this.musicAudio.volume * 100;
+			try {
+				this.ytIframe.setVolume(this.volume);
+			} catch (err) {
+				return;
+			}
 		},
 	},
 	methods: {
+		onPlayerReady(event) {
+			event.target.playVideo();
+			this.isPlaying = true;
+			this.canPlay = true;
+			setTimeout(() => {
+				this.durationInSeconds = event.target.getDuration();
+				this.fixedDuration = this.toTime(this.durationInSeconds);
+				this.ytIframe.setVolume(this.volume);
+			}, 200);
+		},
+		onPlayerStateChange(event) {
+			console.log(event);
+			if (event.data === -1) {
+				this.ytIframe.playVideo();
+				this.isPlaying = true;
+				this.canPlay = true;
+			} else if (event.data === 0) {
+				this.sameMusic = false;
+				this.stopBar();
+				this.isPlaying = false;
+				this.canPlay = false;
+				if (this.playlist.length > 0 && this.currentMusic <= this.playlist.length) {
+					this.isPlaying = true;
+					this.canPlay = true;
+					this.continueBar();
+					this.$emit("musicFinished");
+				}
+			}
+		},
 		openChannelUrl() {
 			require("electron").shell.openExternal(this.channelUrl);
 		},
@@ -301,7 +369,11 @@ export default {
 		},
 		continueBar() {
 			this.verifyMusicDuration = setInterval(() => {
-				this.currentDuration = this.musicAudio.currentTime;
+				try {
+					this.currentDuration = this.ytIframe.getCurrentTime();
+				} catch (err) {
+					err;
+				}
 			}, 1000);
 		},
 		mute() {
@@ -335,18 +407,20 @@ export default {
 			this.lyricsClass = "lyrics active";
 		},
 		async pausePlayMusic() {
-			if (this.musicAudio.paused) {
+			console.log(this.isPlaying);
+			if (!this.isPlaying) {
 				this.continueBar();
 				this.isPlaying = true;
-				this.musicAudio.play();
+				this.ytIframe.playVideo();
 			} else {
+				console.log("pause");
 				this.stopBar();
 				this.isPlaying = false;
-				this.musicAudio.pause();
+				this.ytIframe.pauseVideo();
 			}
 		},
 		changeCurrentDuration() {
-			this.musicAudio.currentTime = this.currentDuration;
+			this.ytIframe.seekTo(this.currentDuration);
 		},
 		manageWordSize() {
 			if (window.innerWidth < 1000) {
@@ -374,8 +448,7 @@ export default {
 				this.fixedDuration = this.duration;
 			}
 		},
-		toTime(time) {
-			console.log(time);
+		toTime(time, isFinal = false) {
 			let hours = time > 3600 ? ~~(time / 3600) : 0;
 			let mins = ~~((time % 3600) / 60);
 			let secs = ~~time % 60;
@@ -390,12 +463,16 @@ export default {
 					":" +
 					(secs < 10 ? "0" : "");
 			} else {
-				ret +=
-					"&nbsp;&nbsp;&nbsp;&nbsp;" +
-					(mins < 10 ? "0" : "") +
-					mins +
-					":" +
-					(secs < 10 ? "0" : "");
+				if (isFinal) {
+					ret += "&nbsp;" + (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "");
+				} else {
+					ret +=
+						"&nbsp;&nbsp;&nbsp;&nbsp;" +
+						(mins < 10 ? "0" : "") +
+						mins +
+						":" +
+						(secs < 10 ? "0" : "");
+				}
 			}
 			ret += "" + secs;
 			return ret;
@@ -749,5 +826,9 @@ input[type="range"]::-webkit-slider-thumb:active {
 
 input[type="range"]::-moz-range-thumb:active {
 	cursor: -moz-grabbing;
+}
+
+iframe {
+	display: none;
 }
 </style>

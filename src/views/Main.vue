@@ -181,11 +181,14 @@
 					description="Ué, aqui está vazio... Estranho"
 				></el-empty>
 				<div v-else style="display: flex;">
-					<el-collapse style="width: 100%; margin-left: 20px; margin-right: 20px">
+					<el-collapse
+						style="width: 100%; margin-left: 20px; margin-right: 20px; border-bottom: 0px transparent"
+					>
 						<el-collapse-item
 							v-for="(playlist, i) in playlists"
 							:key="i"
 							:title="`&nbsp;&nbsp;&nbsp;&nbsp;${playlist.name}`"
+							style="margin-bottom: 20px;"
 						>
 							<el-button
 								style="margin-left: 20px"
@@ -201,7 +204,7 @@
 								class="playlistName"
 								circle
 								size="medium"
-								@click="playPlaylist(i)"
+								@click="deletePlaylist(i)"
 							></el-button>
 							<hr />
 							<div
@@ -256,10 +259,12 @@
 <script>
 import PlayerBar from "../components/PlayerBar.vue";
 import { youtubeSearcher } from "../utils/ytsr";
+import { youtubePlaylist } from "../utils/ytpl";
 import { ipcRenderer } from "electron";
 import ytdl from "ytdl-core";
 import slugify from "slugify";
 import fs from "fs";
+
 export default {
 	components: {
 		PlayerBar,
@@ -268,6 +273,7 @@ export default {
 		return {
 			page: "main",
 			ytSearcher: new youtubeSearcher(),
+			ytPlaylist: new youtubePlaylist(),
 			ytSearchResults: [],
 			args: "",
 			music: {
@@ -295,6 +301,7 @@ export default {
 			fs.writeFileSync("musics/playlists.json", "[]");
 		}
 		this.playlists = JSON.parse(fs.readFileSync("musics/playlists.json"));
+		await this.ytSearcher.start();
 		await this.ytSearcher.start();
 		this.manageWordSize();
 		window.addEventListener("resize", this.manageWordSize);
@@ -338,7 +345,56 @@ export default {
 					background: "rgba(0, 0, 0, 0.7)",
 				});
 				this.loading = true;
-				this.ytSearchResults = (await this.ytSearcher.search(this.args)).items;
+				if (this.args.includes("playlist")) {
+					const playlist = await this.ytPlaylist.searchPlaylist(this.args);
+					this.ytSearchResults = playlist.items.items;
+					this.$confirm("Salvar playlist?", "Playlist", {
+						confirmButtonText: "Salvar",
+						confirmButtonClass:
+							"el-button el-button--default el-button--small el-button--danger",
+						cancelButtonText: "Não Salvar",
+						type: "info",
+					})
+						.then(() => {
+							this.newPlaylist(playlist.name);
+							this.$message({
+								type: "success",
+								message: "Playlist Salva!",
+							});
+						})
+						.catch(() => {
+							this.$message({
+								type: "info",
+								message: "Ok, ação cancelada",
+							});
+							this.$confirm("Adicionar a fila de reprodução?", "Playlist", {
+								confirmButtonText: "Adicionar",
+								confirmButtonClass:
+									"el-button el-button--default el-button--small el-button--danger",
+								cancelButtonText: "Não Adicionar",
+								type: "info",
+							})
+								.then(() => {
+									for (let c in this.ytSearchResults) {
+										// i = video, ii = playlist
+										this.addToPlaylist(c);
+									}
+									this.changeCurrentMusic(0, true);
+									this.$message({
+										type: "success",
+										message: "Adicionado a fila!",
+									});
+								})
+								.catch(() => {
+									this.$message({
+										type: "info",
+										message: "Ok, ação cancelada",
+									});
+								});
+						});
+				} else {
+					this.ytSearchResults = (await this.ytSearcher.search(this.args)).items;
+				}
 				loading.close();
 				this.loading = false;
 			} else {
@@ -382,7 +438,7 @@ export default {
 					channel: chosenVideo.author.name,
 					channelUrl: chosenVideo.author.url,
 					musicThumb: chosenVideo.bestThumbnail.url,
-					link: chosenVideo.url,
+					link: chosenVideo.url.split("&list")[0],
 					duration: chosenVideo.duration,
 				};
 				return true;
@@ -448,42 +504,77 @@ export default {
 				this.currentMusic = this.currentMusic + 1;
 			}
 		},
-		newPlaylist() {
-			this.$prompt("Insira o nome da playlist: ", "Nova Playlist", {
-				confirmButtonText: "Salvar",
-				cancelButtonText: "Cancelar",
-				iconClass: "bx bxs-playlist",
-				confirmButtonClass:
-					"el-button el-button--default el-button--small el-button--danger",
-			})
-				.then(({ value }) => {
-					this.playlists.push({ name: value, musics: [] });
+		newPlaylist(name = null) {
+			if (name) {
+				try {
+					this.playlists.push({ name, musics: [] });
+					const playlistIndexBefore = this.playlists.filter((b) => b.name === name);
+					if (!playlistIndexBefore) {
+						this.playlists.push({ name, musics: [] });
+					}
+					const playlistIndex = this.playlists.findIndex((b) => b.name === name);
+					for (let c in this.ytSearchResults) {
+						// i = video, ii = playlist
+
+						console.log(this.ytSearchResults.length === Number(c) + 1);
+						if (this.ytSearchResults.length === Number(c) + 1) {
+							this.addToPlaylist([c, playlistIndex], true, true);
+						} else {
+							this.addToPlaylist([c, playlistIndex], true, false);
+						}
+					}
 					fs.writeFileSync("musics/playlists.json", JSON.stringify(this.playlists));
+					return true;
+				} catch (err) {
 					this.$message({
-						type: "success",
-						message: "Salvo com sucesso",
+						type: "error",
+						message: "Erro ao criar playlist!",
 					});
+					return false;
+				}
+			} else {
+				this.$prompt("Insira o nome da playlist: ", "Nova Playlist", {
+					confirmButtonText: "Salvar",
+					cancelButtonText: "Cancelar",
+					iconClass: "bx bxs-playlist",
+					confirmButtonClass:
+						"el-button el-button--default el-button--small el-button--danger",
 				})
-				.catch(() => {
-					this.$message({
-						type: "info",
-						message: "Ação cancelada",
+					.then(({ value }) => {
+						this.playlists.push({ name: value, musics: [] });
+						fs.writeFileSync("musics/playlists.json", JSON.stringify(this.playlists));
+						this.$message({
+							type: "success",
+							message: "Salvo com sucesso",
+						});
+					})
+					.catch(() => {
+						this.$message({
+							type: "info",
+							message: "Ação cancelada",
+						});
 					});
-				});
+			}
 		},
 		playPlaylist(playlistIndex) {
 			this.playlist = this.playlists[playlistIndex].musics;
 			this.changeCurrentMusic(this.playlist[0], false, true);
 		},
-		addToPlaylist(videoIndex, addLiterallyToAPlaylist = false) {
+		deletePlaylist(playlistIndex) {
+			this.playlists.splice(playlistIndex, 1);
+			fs.writeFileSync("musics/playlists.json", JSON.stringify(this.playlists));
+		},
+		addToPlaylist(videoIndex, addLiterallyToAPlaylist = false, removeNotifications = false) {
 			if (addLiterallyToAPlaylist) {
 				try {
 					this.playlists[videoIndex[1]].musics.push(this.ytSearchResults[videoIndex[0]]);
 					fs.writeFileSync("musics/playlists.json", JSON.stringify(this.playlists));
-					this.$message({
-						type: "success",
-						message: "Adicionado com sucesso",
-					});
+					if (removeNotifications) {
+						this.$message({
+							type: "success",
+							message: "Adicionado com sucesso",
+						});
+					}
 				} catch (err) {
 					this.$message({
 						type: "error",
@@ -628,6 +719,12 @@ export default {
 }
 
 .searchButton:nth-child(0):hover {
+	color: #fff !important;
+}
+
+.confirmButton {
+	background-color: #f56c6c !important;
+	border: 1px solid #f56c6c !important;
 	color: #fff !important;
 }
 

@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from "vue-router";
-import Main from "../views/Test.vue";
+import Main from "../views/Main.vue";
 
 const routes = [
 	{

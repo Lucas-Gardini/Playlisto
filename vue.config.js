@@ -7,6 +7,7 @@ module.exports = {
 				win: {
 					icon: "public/favicon.ico",
 				},
+				asar: false,
 			},
 		},
 	},
