@@ -17,10 +17,10 @@
 					<i style="margin-right: 5px; font-size: larger" class="bx bxs-playlist"></i>
 					<span>Suas músicas</span>
 				</el-menu-item>
-				<el-menu-item index="3">
+				<!-- <el-menu-item index="3">
 					<i style="margin-right: 5px; font-size: larger" class="bx bxs-cog"></i>
 					<span>Configurações</span>
-				</el-menu-item>
+				</el-menu-item> -->
 			</el-menu>
 		</div>
 		<transition name="slide-fade">
@@ -182,7 +182,7 @@
 				></el-empty>
 				<div v-else style="display: flex;">
 					<el-collapse
-						style="width: 100%; margin-left: 20px; margin-right: 20px; border-bottom: 0px transparent"
+						style="width: 100%; margin-top: 20px; margin-left: 20px; margin-right: 20px; border-bottom: 0px transparent"
 					>
 						<el-collapse-item
 							v-for="(playlist, i) in playlists"
@@ -420,7 +420,6 @@ export default {
 					} else {
 						okToContinue = true;
 					}
-					// console.log(okToContinue);
 					chosenVideo = this.playlist[videoIndex];
 				} else {
 					okToContinue = true;
@@ -466,31 +465,23 @@ export default {
 			return array;
 		},
 		shufflePlaylist() {
-			if (localStorage.shuffleAgreed) {
-				this.playlist = this.shuffle(this.playlist);
-			} else {
-				this.$confirm(
-					"Esta função irá embaralhar TODAS as músicas, não há voltas!",
-					"Atenção, este botão não funciona como o padrão conhecido",
-					{
-						confirmButtonText: "OK",
-						cancelButtonText: "Cancelar",
+			this.$confirm("Deseja continuar?", "Essa função irá embaralhar e resetar a fila!", {
+				confirmButtonText: "OK",
+				confirmButtonClass:
+					"el-button el-button--default el-button--small el-button--danger",
+				cancelButtonText: "Cancelar",
+				type: "info",
+			})
+				.then(() => {
+					this.playlist = this.shuffle(this.playlist);
+					this.changeCurrentMusic(this.playlist[0], false, true);
+				})
+				.catch(() => {
+					this.$message({
 						type: "info",
-					}
-				)
-					.then(() => {
-						localStorage.shuffleAgreed = true;
-						this.playlist = this.shuffle(this.playlist);
-					})
-					.catch(() => {
-						localStorage.shuffleAgreed = true;
-						this.playlist = this.shuffle(this.playlist);
-						this.$message({
-							type: "info",
-							message: "Embaralhar cancelado!",
-						});
+						message: "Embaralhar cancelado!",
 					});
-			}
+				});
 		},
 		previousMusic() {
 			const okToContinue = this.changeCurrentMusic(this.currentMusic - 1, true);
@@ -516,7 +507,6 @@ export default {
 					for (let c in this.ytSearchResults) {
 						// i = video, ii = playlist
 
-						console.log(this.ytSearchResults.length === Number(c) + 1);
 						if (this.ytSearchResults.length === Number(c) + 1) {
 							this.addToPlaylist([c, playlistIndex], true, true);
 						} else {
@@ -557,7 +547,7 @@ export default {
 			}
 		},
 		playPlaylist(playlistIndex) {
-			this.playlist = this.playlists[playlistIndex].musics;
+			this.playlist = [...this.playlists[playlistIndex].musics];
 			this.changeCurrentMusic(this.playlist[0], false, true);
 		},
 		deletePlaylist(playlistIndex) {
@@ -599,7 +589,10 @@ export default {
 			await ipcRenderer.send("saveFileLocation");
 			await ipcRenderer.once("returnedSaveLocation", (sender, response) => {
 				if (response[0]) {
-					console.log("User has cancelled");
+					this.$message({
+						type: "info",
+						message: "Ação cancelada!",
+					});
 				} else {
 					musicName = musicName.replaceAll("*", "");
 					const downloadPath = `${response[1]}/${slugify(musicName)}.mp3`;

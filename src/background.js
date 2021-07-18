@@ -1,6 +1,16 @@
 "use strict";
-import { app, protocol, BrowserWindow, ipcMain, dialog } from "electron";
+import {
+	app,
+	protocol,
+	BrowserWindow,
+	ipcMain,
+	dialog,
+	globalShortcut,
+	Notification,
+} from "electron";
+import DiscordRPC from "discord-rpc";
 import express from "express";
+import ws from "ws";
 const fetch = require("electron-fetch").default;
 import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
 const isDevelopment = process.env.NODE_ENV !== "production";
@@ -23,10 +33,84 @@ protocol.registerSchemesAsPrivileged([
 var main;
 
 async function createWindow() {
-	const expressApplication = express();
-	expressApplication.use("/", express.static("./resources/app"));
-	expressApplication.listen(7089);
+	let sockets = [];
+	try {
+		const clientId = "842568729551700028";
+		const rpc = new DiscordRPC.Client({ transport: "ipc" });
+		rpc.on("ready", async () => {
+			console.log("Started RPC!");
+			const startTimestamp = new Date();
+			await rpc.setActivity({
+				details: "Escolhendo uma música...",
+				state: "    ",
+				// buttons: [
+				// 	{ label: "Baixar", url: "https://github.com/Lucas-Gardini/Playlisto/releases" },
+				// ],
+				startTimestamp,
+				// smallImageKey: "playlisto",
+				largeImageKey: "playlisto",
+				spectateSecret: "",
+				instance: false,
+			});
+		});
 
+		rpc.login({ clientId })
+			.then(() => {
+				console.log("App running!");
+			})
+			.catch((err) => {
+				console.log(err);
+			});
+
+		const expressApplication = express();
+		expressApplication.use("/", express.static("./resources/app"));
+		expressApplication.listen(7089);
+		const webSocket = new ws.Server({
+			port: 7090,
+		});
+		let changeActivity = 0;
+		let timeout = setTimeout(() => {});
+		let timeout2 = setTimeout(() => {});
+		webSocket.on("connection", (socket) => {
+			sockets.push(socket);
+			socket.on("message", async (message) => {
+				const jsonfyMessage = JSON.parse(message);
+				// DISCORD RICH PRESENCE
+				clearTimeout(timeout);
+				clearTimeout(timeout2);
+				timeout = setTimeout(async () => {
+					await rpc.clearActivity();
+					rpc.setActivity({
+						details: jsonfyMessage.title,
+						state: "Escutando",
+						buttons: [{ label: "Ouvir", url: `${jsonfyMessage.url}` }],
+						// startTimestamp,
+						// smallImageKey: "playlisto",
+						largeImageKey: "playlisto",
+						spectateSecret: "",
+						instance: false,
+					}).catch((err) => {
+						console.log(err);
+					});
+					changeActivity = 15000;
+					timeout2 = setTimeout(() => {
+						changeActivity = 0;
+					}, 15000);
+				}, changeActivity);
+
+				// ENDOF DISCORD RICH PRESENCE
+			});
+		});
+	} catch (err) {
+		console.log(err);
+		new Notification({
+			title: "Falha ao Iniciar!",
+			body:
+				"Tenha certeza de que as portas 7089 e 7090 estejam disponíveis em seu computador! Para mais detalhes, contate o desenvolvedor",
+			urgency: "critical",
+		}).show();
+		app.quit();
+	}
 	// Create the browser window.
 	const win = new BrowserWindow({
 		titleBarStyle: "hidden",
@@ -61,6 +145,22 @@ async function createWindow() {
 		app.quit();
 		return;
 	}
+
+	globalShortcut.register("MediaPlayPause", () => {
+		sockets.forEach((socket) => {
+			socket.send("MediaPlayPause");
+		});
+	});
+	globalShortcut.register("MediaNextTrack", () => {
+		sockets.forEach((socket) => {
+			socket.send("MediaNextTrack");
+		});
+	});
+	globalShortcut.register("MediaPreviousTrack", () => {
+		sockets.forEach((socket) => {
+			socket.send("MediaPreviousTrack");
+		});
+	});
 }
 
 // Quit when all windows are closed.
@@ -110,6 +210,11 @@ app.on("ready", async () => {
 		load.loadURL("app://./loading.html");
 	}
 	await createWindow();
+});
+
+app.on("will-quit", () => {
+	// Unregister all shortcuts.
+	globalShortcut.unregisterAll();
 });
 
 ipcMain.once("app-loaded", () => {
@@ -170,7 +275,6 @@ ipcMain.handle("getLyrics", async (event, args) => {
 		var lyrics;
 
 		try {
-			console.log(`${url}${encodeURIComponent(author + " " + title)}+lyrics`);
 			lyrics = await fetch(`${url}${encodeURIComponent(author + " " + title)}+lyrics`);
 			lyrics = await lyrics.textConverted();
 			[, lyrics] = lyrics.split(delimiter1);

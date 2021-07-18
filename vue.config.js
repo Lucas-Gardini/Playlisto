@@ -8,6 +8,7 @@ module.exports = {
 					icon: "public/favicon.ico",
 				},
 				asar: false,
+				asarUnpack: "./",
 			},
 		},
 	},

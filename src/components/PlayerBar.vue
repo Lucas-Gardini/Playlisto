@@ -71,10 +71,11 @@
 						circle
 					></el-button>
 					<el-button
-						style="background-color: transparent; color: #fbfbfb"
+						style="background-color: transparent; color: #fbfbfb; font-size: 12.5px"
 						:disabled="duration.length > 0 ? false : true"
+						@click="this.repeat === 0 ? (this.repeat = 1) : (this.repeat = 0)"
 						size="mini"
-						icon="bx bx-repeat"
+						:icon="this.repeat === 0 ? 'mdi mdi-repeat-off' : 'mdi mdi-repeat-once'"
 						circle
 					></el-button>
 				</div>
@@ -217,10 +218,32 @@ export default {
 		window.addEventListener("resize", this.manageWordSize);
 		this.musicAudio.preload = false;
 		this.volume = localStorage.volume;
+
+		this.ws.onmessage = (message) => {
+			switch (message.data) {
+				case "MediaPreviousTrack":
+					this.previousMusic();
+					break;
+				case "MediaNextTrack":
+					this.$emit("nextMusic");
+					break;
+				case "MediaPlayPause":
+					if (!this.isPlaying) {
+						this.continueBar();
+						this.isPlaying = true;
+						this.ytIframe.playVideo();
+					} else {
+						this.stopBar();
+						this.isPlaying = false;
+						this.ytIframe.pauseVideo();
+					}
+			}
+		};
 	},
 	data() {
 		return {
 			ytDownloader: new youtubeDownloader(),
+			rpc: null,
 			ytIframe: null,
 			musicUrl: "",
 			musicAudio: new Audio(),
@@ -237,6 +260,8 @@ export default {
 			lyricsClass: "lyrics",
 			sameMusic: false,
 			gettingLyrics: false,
+			repeat: 0,
+			ws: new WebSocket("ws://localhost:7090"),
 		};
 	},
 	watch: {
@@ -245,7 +270,6 @@ export default {
 				this.ytIframe.destroy();
 			}
 
-			console.log(this.link, this.link.split("?v=")[1]);
 			this.ytIframe = YTIframe.load((YT) => {
 				const player = new YT.Player("player", {
 					height: "390",
@@ -268,47 +292,10 @@ export default {
 			});
 
 			this.continueBar();
-
-			// document.querySelector(".el-loading-mask.hidden").className = "el-loading-mask";
-			// this.sameMusic = false;
-			// this.canPlay = false;
-			// setTimeout(() => {
-			// 	this.canPlay = true;
-			// }, 800);
-			// this.musicUrl = "";
-			// if (this.musicAudio !== null) {
-			// 	this.musicAudio.pause();
-			// }
-			// const returnedUrl = await this.ytDownloader.download(this.link, this.name);
-			// this.musicAudio = document.querySelector("#music");
-			// this.musicAudio.src = returnedUrl;
-			// this.musicAudio.volume = this.volume / 100;
-			// this.musicAudio.play();
-			// this.musicAudio.onended = () => {
-			// 	this.sameMusic = false;
-			// 	this.stopBar();
-			// 	this.isPlaying = false;
-			// 	if (this.playlist.length > 0 && this.currentMusic <= this.playlist.length) {
-			// 		this.isPlaying = true;
-			// 		this.continueBar();
-			// 		this.$emit("musicFinished");
-			// 	}
-			// };
-			// this.musicAudio.onpause = () => {
-			// 	this.isPlaying = false;
-			// };
-			// this.musicAudio.onplay = () => {
-			// 	this.isPlaying = true;
-			// };
-			// this.isPlaying = true;
-			// this.durationInSeconds = 0;
-			// this.fixedDuration = "";
-			// this.currentDuration = this.musicAudio.currentTime;
-			// this.convertDuration();
-			// document.querySelector(".el-loading-mask").className = "el-loading-mask hidden";
+			this.ws.send(JSON.stringify({ title: this.name, url: this.link }));
 		},
 		async playlist() {
-			console.log("Playlist changed");
+			// console.log("Playlist changed");
 		},
 		volume() {
 			this.musicAudio.volume = this.volume / 100;
@@ -332,7 +319,6 @@ export default {
 			}, 200);
 		},
 		onPlayerStateChange(event) {
-			console.log(event);
 			if (event.data === -1) {
 				this.ytIframe.playVideo();
 				this.isPlaying = true;
@@ -342,11 +328,21 @@ export default {
 				this.stopBar();
 				this.isPlaying = false;
 				this.canPlay = false;
-				if (this.playlist.length > 0 && this.currentMusic <= this.playlist.length) {
+				if (this.repeat === 0) {
+					if (this.playlist.length > 0 && this.currentMusic <= this.playlist.length) {
+						this.isPlaying = true;
+						this.canPlay = true;
+						this.continueBar();
+						this.$emit("musicFinished");
+					}
+				} else if (this.repeat === 1) {
+					this.ytIframe.seekTo(0);
+					this.ytIframe.playVideo();
+					this.continueBar();
 					this.isPlaying = true;
 					this.canPlay = true;
-					this.continueBar();
-					this.$emit("musicFinished");
+				} else if (this.repeat === 2) {
+					// TODO: Repeat Playlist
 				}
 			}
 		},
@@ -407,13 +403,11 @@ export default {
 			this.lyricsClass = "lyrics active";
 		},
 		async pausePlayMusic() {
-			console.log(this.isPlaying);
 			if (!this.isPlaying) {
 				this.continueBar();
 				this.isPlaying = true;
 				this.ytIframe.playVideo();
 			} else {
-				console.log("pause");
 				this.stopBar();
 				this.isPlaying = false;
 				this.ytIframe.pauseVideo();
@@ -683,8 +677,11 @@ export default {
 	0% {
 		transform: rotate(0deg);
 	}
-	100% {
+	50% {
 		transform: rotate(360deg);
+	}
+	100% {
+		transform: rotate(-360deg);
 	}
 }
 
@@ -830,5 +827,10 @@ input[type="range"]::-moz-range-thumb:active {
 
 iframe {
 	display: none;
+}
+
+.el-button--mini:hover {
+	border: 1px solid #f56c6c !important;
+	background-color: #f79898 !important;
 }
 </style>
