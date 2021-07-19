@@ -1,6 +1,7 @@
 .DS_Store
 node_modules
 /dist
+/musics/playlist.json
 
 
 # local env files

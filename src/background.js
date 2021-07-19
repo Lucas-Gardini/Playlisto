@@ -31,6 +31,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 var main;
+var richPresence = false;
 
 async function createWindow() {
 	let sockets = [];
@@ -38,20 +39,21 @@ async function createWindow() {
 		const clientId = "842568729551700028";
 		const rpc = new DiscordRPC.Client({ transport: "ipc" });
 		rpc.on("ready", async () => {
-			console.log("Started RPC!");
-			const startTimestamp = new Date();
-			await rpc.setActivity({
-				details: "Escolhendo uma música...",
-				state: "    ",
-				// buttons: [
-				// 	{ label: "Baixar", url: "https://github.com/Lucas-Gardini/Playlisto/releases" },
-				// ],
-				startTimestamp,
-				// smallImageKey: "playlisto",
-				largeImageKey: "playlisto",
-				spectateSecret: "",
-				instance: false,
-			});
+			if (richPresence) {
+				const startTimestamp = new Date();
+				await rpc.setActivity({
+					details: "Escolhendo uma música...",
+					state: "    ",
+					// buttons: [
+					// 	{ label: "Baixar", url: "https://github.com/Lucas-Gardini/Playlisto/releases" },
+					// ],
+					startTimestamp,
+					// smallImageKey: "playlisto",
+					largeImageKey: "playlisto",
+					spectateSecret: "",
+					instance: false,
+				});
+			}
 		});
 
 		rpc.login({ clientId })
@@ -76,27 +78,31 @@ async function createWindow() {
 			socket.on("message", async (message) => {
 				const jsonfyMessage = JSON.parse(message);
 				// DISCORD RICH PRESENCE
-				clearTimeout(timeout);
-				clearTimeout(timeout2);
-				timeout = setTimeout(async () => {
-					await rpc.clearActivity();
-					rpc.setActivity({
-						details: jsonfyMessage.title,
-						state: "Escutando",
-						buttons: [{ label: "Ouvir", url: `${jsonfyMessage.url}` }],
-						// startTimestamp,
-						// smallImageKey: "playlisto",
-						largeImageKey: "playlisto",
-						spectateSecret: "",
-						instance: false,
-					}).catch((err) => {
-						console.log(err);
-					});
-					changeActivity = 15000;
-					timeout2 = setTimeout(() => {
-						changeActivity = 0;
-					}, 15000);
-				}, changeActivity);
+				if (richPresence) {
+					clearTimeout(timeout);
+					clearTimeout(timeout2);
+					timeout = setTimeout(async () => {
+						await rpc.clearActivity();
+						rpc.setActivity({
+							details: jsonfyMessage.title,
+							state: "Escutando",
+							buttons: [{ label: "Ouvir", url: `${jsonfyMessage.url}` }],
+							// startTimestamp,
+							// smallImageKey: "playlisto",
+							largeImageKey: "playlisto",
+							spectateSecret: "",
+							instance: false,
+						}).catch((err) => {
+							console.log(err);
+						});
+						changeActivity = 15000;
+						timeout2 = setTimeout(() => {
+							changeActivity = 0;
+						}, 15000);
+					}, changeActivity);
+				} else {
+					rpc.clearActivity();
+				}
 
 				// ENDOF DISCORD RICH PRESENCE
 			});
@@ -229,6 +235,10 @@ ipcMain.once("app-loaded", () => {
 		console.log(error);
 		app.quit();
 	}
+});
+
+ipcMain.on("richPresence", (event, isRichPresence) => {
+	richPresence = isRichPresence;
 });
 
 ipcMain.handle("ManageWindow", async (event, args) => {

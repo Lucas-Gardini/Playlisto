@@ -17,10 +17,10 @@
 					<i style="margin-right: 5px; font-size: larger" class="bx bxs-playlist"></i>
 					<span>Suas músicas</span>
 				</el-menu-item>
-				<!-- <el-menu-item index="3">
+				<el-menu-item index="3" @click="page = 'config'">
 					<i style="margin-right: 5px; font-size: larger" class="bx bxs-cog"></i>
 					<span>Configurações</span>
-				</el-menu-item> -->
+				</el-menu-item>
 			</el-menu>
 		</div>
 		<transition name="slide-fade">
@@ -140,11 +140,7 @@
 											</template>
 										</el-popover>
 										<el-dropdown>
-											<el-button
-												type="text"
-												icon="bx bx-list-plus"
-												circle
-											></el-button>
+											<el-button type="text" icon="bx bx-list-plus" circle></el-button>
 											<template #dropdown style="text-align: center">
 												<el-dropdown-menu>
 													<el-dropdown-item
@@ -154,8 +150,7 @@
 														>{{ playlist.name }}</el-dropdown-item
 													>
 													<el-dropdown-item @click="newPlaylist()">
-														<i class="bx bxs-playlist"></i> Criar
-														playlist
+														<i class="bx bxs-playlist"></i> Criar playlist
 													</el-dropdown-item>
 												</el-dropdown-menu>
 											</template>
@@ -187,7 +182,11 @@
 						<el-collapse-item
 							v-for="(playlist, i) in playlists"
 							:key="i"
-							:title="`&nbsp;&nbsp;&nbsp;&nbsp;${playlist.name}`"
+							:title="
+								`&nbsp;&nbsp;&nbsp;&nbsp;${playlist.name}`.length > 20 && isWindowSizeSmall
+									? `${`&nbsp;&nbsp;&nbsp;&nbsp;${playlist.name}`.substring(0, 39)}...`
+									: `&nbsp;&nbsp;&nbsp;&nbsp;${playlist.name}`
+							"
 							style="margin-bottom: 20px;"
 						>
 							<el-button
@@ -227,9 +226,7 @@
 									size="medium"
 									@click="openChannelUrl(music.url)"
 									>{{
-										isWindowSizeSmall
-											? `${music.title.substring(0, 50)}...`
-											: music.title
+										isWindowSizeSmall ? `${music.title.substring(0, 50)}...` : music.title
 									}}</el-button
 								>
 							</div>
@@ -238,6 +235,16 @@
 				</div>
 			</div>
 		</transition>
+		<transition name="slide-fade">
+			<!-- CONFIGS -->
+			<div class="content" v-if="page === 'config'">
+				<span style="margin-right: 5px">Presença no Discord</span>
+				<el-button v-if="richPresence === false" @click="changeRichPresence(true)" type="danger"
+					>Ativar</el-button
+				>
+				<el-button v-else @click="changeRichPresence(false)" type="danger">Desativar</el-button>
+			</div></transition
+		>
 		<div class="player" style="background-color: whitesmoke">
 			<player-bar
 				:name="music.name"
@@ -290,9 +297,12 @@ export default {
 			isWindowSizeSmall: false,
 			navWidth: "0",
 			sidenav: "sidenav",
+			richPresence: null,
 		};
 	},
 	async mounted() {
+		this.richPresence = localStorage.getItem("richPresence");
+
 		if (!fs.existsSync("musics")) {
 			fs.mkdirSync("musics");
 		}
@@ -301,10 +311,44 @@ export default {
 			fs.writeFileSync("musics/playlists.json", "[]");
 		}
 		this.playlists = JSON.parse(fs.readFileSync("musics/playlists.json"));
+		if (
+			localStorage.getItem("richPresence") === null ||
+			typeof localStorage.getItem("richPresence") === "undefined"
+		) {
+			this.$confirm(
+				"Deseja que o Playlisto mostre o que você está ouvindo no Discord?",
+				"Rich Presence",
+				{
+					confirmButtonText: "Sim",
+					confirmButtonClass: "el-button el-button--default el-button--small el-button--danger",
+					cancelButtonText: "Não",
+					type: "info",
+				}
+			)
+				.then(() => {
+					localStorage.setItem("richPresence", true);
+					ipcRenderer.send("richPresence", true);
+
+					this.$message({
+						type: "success",
+						message: "Sucesso! A função 'Rich Presence' está ativada!",
+					});
+				})
+				.catch(() => {
+					localStorage.setItem("richPresence", false);
+					ipcRenderer.send("richPresence", false);
+
+					this.$message({
+						type: "info",
+						message: "Você pode ativar esta função no menu 'Opções'!",
+					});
+				});
+		}
 		await this.ytSearcher.start();
 		await this.ytSearcher.start();
 		this.manageWordSize();
 		window.addEventListener("resize", this.manageWordSize);
+		ipcRenderer.send("richPresence", this.richPresence);
 	},
 	methods: {
 		openNav() {
@@ -336,6 +380,11 @@ export default {
 		openChannelUrl(url) {
 			require("electron").shell.openExternal(url);
 		},
+		changeRichPresence(presence) {
+			this.richPresence = presence;
+			localStorage.setItem("richPresence", presence);
+			ipcRenderer.send("richPresence", presence);
+		},
 		async search() {
 			if (this.args.length > 0) {
 				const loading = this.$loading({
@@ -350,8 +399,7 @@ export default {
 					this.ytSearchResults = playlist.items.items;
 					this.$confirm("Salvar playlist?", "Playlist", {
 						confirmButtonText: "Salvar",
-						confirmButtonClass:
-							"el-button el-button--default el-button--small el-button--danger",
+						confirmButtonClass: "el-button el-button--default el-button--small el-button--danger",
 						cancelButtonText: "Não Salvar",
 						type: "info",
 					})
@@ -456,10 +504,7 @@ export default {
 				currentIndex--;
 
 				// And swap it with the current element.
-				[array[currentIndex], array[randomIndex]] = [
-					array[randomIndex],
-					array[currentIndex],
-				];
+				[array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
 			}
 
 			return array;
@@ -467,8 +512,7 @@ export default {
 		shufflePlaylist() {
 			this.$confirm("Deseja continuar?", "Essa função irá embaralhar e resetar a fila!", {
 				confirmButtonText: "OK",
-				confirmButtonClass:
-					"el-button el-button--default el-button--small el-button--danger",
+				confirmButtonClass: "el-button el-button--default el-button--small el-button--danger",
 				cancelButtonText: "Cancelar",
 				type: "info",
 			})
@@ -527,8 +571,7 @@ export default {
 					confirmButtonText: "Salvar",
 					cancelButtonText: "Cancelar",
 					iconClass: "bx bxs-playlist",
-					confirmButtonClass:
-						"el-button el-button--default el-button--small el-button--danger",
+					confirmButtonClass: "el-button el-button--default el-button--small el-button--danger",
 				})
 					.then(({ value }) => {
 						this.playlists.push({ name: value, musics: [] });
@@ -650,7 +693,7 @@ export default {
 .content {
 	grid-area: content;
 	overflow-y: auto;
-	height: 95vh;
+	height: calc(100vh - 130px);
 	overflow-x: hidden;
 }
 
